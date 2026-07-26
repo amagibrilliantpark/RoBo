@@ -36,12 +36,28 @@ async function sendMessage() {
   Chat.Streaming.resetAccum();
   Chat.Indicators.hideAllStatusIndicators();
 
-  Chat.Messages.appendMessage("user", text);
+  // Remember the prompt text so we can re-append it AFTER ensureSession
+  // returns. Appending first (as we used to) was racy: a session switch
+  // in the gap between abort and ensureSession would either drop the
+  // bubble in the wrong chat or lose it to a renderMessages() call.
   input.value = "";
   setStopMode(true);
 
   try {
     const sessionId = await window.Sessions.ensureSession();
+
+    // Re-check after await: the user may have switched sessions while
+    // ensureSession was in flight. If so, drop the prompt on the floor
+    // (they'd see it disappear with the chat; better than putting it in
+    // the wrong place).
+    if (window.App.currentSession !== sessionId) {
+      setStopMode(false);
+      return;
+    }
+
+    // Safe to append now: currentSession is settled on the session we
+    // just resolved and the chatArea has been prepared by ensureSession.
+    Chat.Messages.appendMessage("user", text);
 
     const model = window.App.currentModel;
     const agent = window.App.currentAgent;
@@ -55,9 +71,6 @@ async function sendMessage() {
       modelWithVariant,
       agent || "build",
     );
-
-    if (typeof window.SSE !== "undefined")
-      window.SSE.lastSendMessageTime = Date.now();
   } catch (error) {
     Chat.Indicators.hideAllStatusIndicators();
     Chat.Messages.appendMessage("assistant", "Error: " + error.message);
@@ -72,6 +85,10 @@ async function sendMessage() {
 /** Abort the current session's running generation. */
 async function stopGeneration() {
   if (!window.App.currentSession) return;
+  // Mark the in-flight message as user-aborted so the trailing
+  // message.updated(completed=true) shows "Generation stopped by user"
+  // instead of an invisible stream tail.
+  window.App.abortedByUser = true;
   try {
     await window.electronAPI.session.abort(window.App.currentSession);
   } catch (error) {

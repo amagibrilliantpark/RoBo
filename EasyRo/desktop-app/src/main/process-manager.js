@@ -17,54 +17,111 @@ function execAsync(command, timeout = 5000) {
   });
 }
 
-/** Spawn the OpenCode serve process and resolve when it's ready. */
+/** Spawn the OpenCode serve process and resolve when it's ready.
+ *
+ *  OpenCode resolution policy (intentionally CLI-free):
+ *  1. <projectPath>/opencode.exe                 — dev / user-data copy
+ *  2. <resourcesPath>/opencode.exe               — packaged with the app
+ *     (NSIS installer, portable zip → resources/opencode.exe)
+ *  3. <parent(projectPath)>/opencode.exe         — portable exe next to
+ *     the project folder
+ *  4. Not found / below v1.17.18                  — auto-download v1.17.18
+ *     into <projectPath>/opencode.exe
+ *
+ *  PATH is NOT consulted on purpose: mixing the system-wide `opencode`
+ *  CLI with the bundled binary was causing session/status drift between
+ *  CLI and EasyRo runs. By always running the bundled executable we get
+ *  one OpenCode build, one set of events, and one place to update. */
 async function startOpencode(instance) {
   const { project, ports } = instance;
   const spawnStart = Date.now();
-  
-  // Find and validate OpenCode executable
-  let opencodePath = findOpencodeExecutable(project.path);
-  log.info('OPENCODE', `Found OpenCode at: ${opencodePath}`);
-  
-  // Check version if it's a local file (not just 'opencode' from PATH)
-  if (opencodePath !== 'opencode' && fs.existsSync(opencodePath)) {
-    const versionValid = await checkOpencodeVersion(opencodePath);
-    if (!versionValid) {
-      log.warn('OPENCODE', 'OpenCode version is below minimum, downloading v1.17.18...');
-      try {
-        opencodePath = await downloadOpencodeBinary(project.path);
-      } catch (error) {
-        log.error('OPENCODE', `Failed to download OpenCode: ${error.message}`);
-        // Fall back to existing binary anyway
-      }
+
+  // The ONLY accepted version. We pin to a single known-good build so
+  // every EasyRo install runs the exact same OpenCode (and gets the same
+  // event payload shapes). Any other version gets re-downloaded.
+  const TARGET_VERSION = '1.17.18';
+  const DOWNLOAD_VERSION = '1.17.18';
+  const isDev = process.argv.includes('--dev');
+
+  // 1) Pick a candidate. We never look at PATH — see policy above.
+  const found = findOpencodeExecutable(project.path);
+
+  // Dev-mode audit log: makes it impossible to mistake what's running.
+  // In production this is a single line; in dev we spell out the policy
+  // and the source so the developer can confirm "no PATH CLI fallback".
+  if (isDev) {
+    log.info('OPENCODE', '============================================================');
+    log.info('OPENCODE', '  OpenCode resolution (CLI-free policy)');
+    log.info('OPENCODE', '  - System PATH `opencode` CLI: explicitly NOT consulted');
+    log.info('OPENCODE', '  - Search order: project → resourcesPath → parent dir');
+    log.info('OPENCODE', `  - Project path: ${project.path}`);
+    if (process.resourcesPath) {
+      log.info('OPENCODE', `  - Resources path: ${process.resourcesPath}`);
     }
-  } else if (opencodePath === 'opencode') {
-    // Check PATH version
-    const versionValid = await checkOpencodeVersion('opencode');
-    if (!versionValid) {
-      log.warn('OPENCODE', 'PATH OpenCode version is below minimum or not found, downloading v1.17.18...');
-      try {
-        opencodePath = await downloadOpencodeBinary(project.path);
-      } catch (error) {
-        log.error('OPENCODE', `Failed to download OpenCode: ${error.message}`);
-        // Fall back to PATH anyway
-      }
+    if (found) {
+      log.info('OPENCODE', `  - Result: using bundled opencode.exe`);
+      log.info('OPENCODE', `  - Source: ${found.source}`);
+      log.info('OPENCODE', `  - Path:   ${found.path}`);
+    } else {
+      log.info('OPENCODE', `  - Result: no bundled copy found`);
+      log.info('OPENCODE', `  - Action: will download v${DOWNLOAD_VERSION} → ${path.join(project.path, 'opencode.exe')}`);
+    }
+    log.info('OPENCODE', '============================================================');
+  } else {
+    log.info('OPENCODE',
+      found
+        ? `Using bundled opencode.exe (source: ${found.source}) at ${found.path} — NOT the PATH CLI`
+        : `No bundled opencode.exe found, will download v${DOWNLOAD_VERSION} into project — NOT the PATH CLI`);
+  }
+
+  let opencodePath = found ? found.path : null;
+
+  // 2) Validate the candidate: must exist and be at or above REQUIRED_VERSION.
+  let needDownload = false;
+  if (!opencodePath) {
+    needDownload = true;
+    if (!isDev) {
+      log.warn('OPENCODE', `OpenCode.exe not found next to the project or in app resources, downloading v${DOWNLOAD_VERSION}…`);
     }
   } else {
-    // No OpenCode found, download it
-    log.warn('OPENCODE', 'OpenCode not found, downloading v1.17.18...');
-    try {
-      opencodePath = await downloadOpencodeBinary(project.path);
-    } catch (error) {
-      log.error('OPENCODE', `Failed to download OpenCode: ${error.message}`);
-      throw new Error('OpenCode not found and download failed');
+    const versionValid = await checkOpencodeVersion(opencodePath);
+    if (!versionValid) {
+      if (isDev) {
+        log.warn('OPENCODE', `Bundled opencode.exe is not v${TARGET_VERSION}, will re-download`);
+      } else {
+        log.warn('OPENCODE', `OpenCode at ${opencodePath} is not v${TARGET_VERSION}, downloading v${DOWNLOAD_VERSION}…`);
+      }
+      needDownload = true;
     }
   }
-  
-  log.info('OPENCODE', `Spawning OpenCode: serve --port ${ports.opencode} (cwd: ${project.path})`);
+
+  // 3) If we don't have a good local copy, fetch one. We do not fall back
+  //    to PATH under any circumstance — the only "no binary" failure mode
+  //    is a network error, which the caller will surface to the user.
+  if (needDownload) {
+    try {
+      opencodePath = await downloadOpencodeBinary(project.path);
+      if (isDev) {
+        log.info('OPENCODE', `Download complete, source now: project (just-downloaded)`);
+      }
+    } catch (error) {
+      log.error('OPENCODE', `Failed to download OpenCode v${DOWNLOAD_VERSION}: ${error.message}`);
+      throw new Error(`OpenCode v${DOWNLOAD_VERSION} could not be installed automatically. ` +
+        `Please place opencode.exe next to your project folder or in the app's resources directory, then restart.`);
+    }
+  }
+
+  log.info('OPENCODE', `Spawning OpenCode: ${opencodePath} serve --port ${ports.opencode} (cwd: ${project.path})`);
 
   return new Promise((resolve, reject) => {
     const args = ['serve', '--port', ports.opencode.toString(), '--hostname', '127.0.0.1'];
+    // Keep `shell: true` on Windows so opencode.exe inherits the exact same
+    // environment & stdout path that the previous build relied on. We still
+    // solve the orphan-Bun problem at shutdown via:
+    //   - `killProcessTree` (taskkill /F /T) from instance-manager
+    //   - `killByImageName` safety net (matches opencode.exe / bun.exe)
+    //   - port-based sweep in `killAll`
+    // So we don't need to swap the spawn mode here.
     const child = spawn(opencodePath, args, {
       cwd: project.path,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -164,27 +221,45 @@ function findSyncRoExecutable(projectPath) {
   return 'syncro';
 }
 
-/** Find opencode.exe in the project dir, packaged resources, parent dir, or fall back to PATH. */
+/** Find opencode.exe in the project dir, packaged resources, or the
+ *  parent of the project dir. Returns an object with the absolute path
+ *  and the source label, or null if no bundled copy is found. PATH is
+ *  intentionally NOT consulted — see startOpencode() for the CLI-free
+ *  resolution policy. */
 function findOpencodeExecutable(projectPath) {
   // 1) Bundled alongside the project (dev or user-data copy)
   const localOpencode = path.join(projectPath, 'opencode.exe');
-  if (fs.existsSync(localOpencode)) return localOpencode;
+  if (fs.existsSync(localOpencode)) {
+    return { path: localOpencode, source: 'project' };
+  }
 
   // 2) Packaged as an extraResource (NSIS / portable → resources/opencode.exe)
   if (process.resourcesPath) {
     const resourcesOpencode = path.join(process.resourcesPath, 'opencode.exe');
-    if (fs.existsSync(resourcesOpencode)) return resourcesOpencode;
+    if (fs.existsSync(resourcesOpencode)) {
+      return { path: resourcesOpencode, source: 'resources' };
+    }
   }
 
   // 3) Parent directory (portable exe sitting next to the project folder)
   const parentOpencode = path.join(path.dirname(projectPath), 'opencode.exe');
-  if (fs.existsSync(parentOpencode)) return parentOpencode;
+  if (fs.existsSync(parentOpencode)) {
+    return { path: parentOpencode, source: 'parent' };
+  }
 
-  // 4) System PATH (return 'opencode' to check PATH)
-  return 'opencode';
+  // No bundled copy — caller will trigger a download into projectPath.
+  return null;
 }
 
-/** Check if opencode version is >= 1.17.18 */
+/** Check if opencode version is EXACTLY v1.17.18.
+ *  We do not accept any other version on purpose:
+ *  - Different minor versions can change SSE event payload schemas
+ *    (we just verified this against the OpenAPI spec).
+ *  - Pinning to a single known-good build eliminates session drift
+ *    between EasyRo and the bundled OpenCode.
+ *  - Any "newer" version found in the wild gets replaced by our
+ *    v1.17.18 download — there's no situation where we'd want to
+ *    honor a different version. */
 async function checkOpencodeVersion(opencodePath) {
   try {
     const result = await execAsync(`"${opencodePath}" -v`, 5000);
@@ -195,42 +270,45 @@ async function checkOpencodeVersion(opencodePath) {
     }
     const version = versionMatch[1];
     log.info('OPENCODE', `Found OpenCode version: ${version}`);
-    
-    // Parse version and check if >= 1.17.18
-    const [major, minor, patch] = version.split('.').map(Number);
-    const minMajor = 1, minMinor = 17, minPatch = 18;
-    
-    if (major > minMajor) return true;
-    if (major === minMajor && minor > minMinor) return true;
-    if (major === minMajor && minor === minMinor && patch >= minPatch) return true;
-    
-    log.warn('OPENCODE', `OpenCode version ${version} is below minimum 1.17.18`);
-    return false;
+
+    // STRICT equality — not ">=". A 1.17.19 or 1.18.0 build will fail
+    // this check and trigger a re-download to v1.17.18.
+    const TARGET_VERSION = '1.17.18';
+    if (version !== TARGET_VERSION) {
+      log.warn('OPENCODE', `OpenCode version ${version} does not match required ${TARGET_VERSION} (strict pin)`);
+      return false;
+    }
+
+    return true;
   } catch (error) {
     log.warn('OPENCODE', `Failed to check OpenCode version: ${error.message}`);
     return false;
   }
 }
 
-/** Download OpenCode binary from GitHub releases (v1.17.18) */
+/** Download the bundled OpenCode v1.17.18 binary. The version is a
+ *  constant on purpose — we pin to a known-good build so EasyRo and the
+ *  CLI can never drift. The destination is always <projectPath>/opencode.exe,
+ *  which is also the first place startOpencode() looks for an existing copy. */
 async function downloadOpencodeBinary(projectPath) {
-  const downloadUrl = 'https://github.com/anomalyco/opencode/releases/download/v1.17.18/opencode-windows-x64.exe';
+  const VERSION = '1.17.18';
+  const downloadUrl = `https://github.com/anomalyco/opencode/releases/download/v${VERSION}/opencode-windows-x64.exe`;
   const targetPath = path.join(projectPath, 'opencode.exe');
-  
-  log.info('OPENCODE', `Downloading OpenCode v1.17.18 from ${downloadUrl}`);
-  
+
+  log.info('OPENCODE', `Downloading OpenCode v${VERSION} from ${downloadUrl}`);
+
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(targetPath);
-    
+
     https.get(downloadUrl, (response) => {
       if (response.statusCode !== 200) {
         reject(new Error(`Download failed with status ${response.statusCode}`));
         return;
       }
-      
+
       const totalSize = parseInt(response.headers['content-length'], 10);
       let downloadedSize = 0;
-      
+
       response.on('data', (chunk) => {
         downloadedSize += chunk.length;
         const progress = Math.round((downloadedSize / totalSize) * 100);
@@ -238,15 +316,22 @@ async function downloadOpencodeBinary(projectPath) {
           log.info('OPENCODE', `Download progress: ${progress}%`);
         }
       });
-      
+
       response.pipe(file);
-      
+
       file.on('finish', () => {
-        file.close();
-        log.info('OPENCODE', `OpenCode downloaded to ${targetPath}`);
-        resolve(targetPath);
+        file.close(() => {
+          // Make sure the binary is executable on POSIX. On Windows the
+          // file is already executable by extension, but on macOS/Linux
+          // dev setups this matters.
+          if (process.platform !== 'win32') {
+            try { fs.chmodSync(targetPath, 0o755); } catch {}
+          }
+          log.info('OPENCODE', `OpenCode v${VERSION} installed at ${targetPath}`);
+          resolve(targetPath);
+        });
       });
-      
+
       file.on('error', (error) => {
         fs.unlink(targetPath, () => {});
         reject(error);
@@ -392,4 +477,26 @@ async function killProcessTree(pid) {
   } catch {}
 }
 
-module.exports = { startOpencode, startSyncRo, findSyncRoExecutable, findOpencodeExecutable, checkOpencodeVersion, downloadOpencodeBinary, killProcessesOnPorts, killProcessTree, sleep };
+/** Safety net: kill every process whose image name matches one of `names`.
+ *  Used after a tree-kill because some grandchildren (notably Bun runtime
+ *  workers spawned by opencode.exe) can reparent to the system root and
+ *  escape `taskkill /T`. Matching by image name catches them regardless of
+ *  parent PID. Each call is best-effort and never throws. */
+async function killByImageName(names) {
+  for (const name of names) {
+    if (!name) continue;
+    try {
+      if (process.platform === 'win32') {
+        // `/F /T` is the most aggressive combo: force-kill AND walk the tree.
+        // Exit codes 0/128 are success; 128/1 mean "no match" which is fine.
+        await execAsync(`taskkill /F /T /IM "${name}"`, 5000);
+      } else {
+        await execAsync(`pkill -9 -f "${name}"`, 5000);
+      }
+    } catch {
+      // No matching process → nothing to kill. Swallow.
+    }
+  }
+}
+
+module.exports = { startOpencode, startSyncRo, findSyncRoExecutable, findOpencodeExecutable, checkOpencodeVersion, downloadOpencodeBinary, killProcessesOnPorts, killProcessTree, killByImageName, sleep };

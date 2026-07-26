@@ -11,6 +11,15 @@ const { setupSSEBridge, cleanupAllSSEBridges } = require('./sse-bridge');
 const instanceManager = new InstanceManager();
 let sessionManager;
 let syncroClient;
+let project;
+
+// Module-level so BOTH `before-quit` and `window-all-closed` handlers can see
+// them. Previously these were declared inside the whenReady().then() callback,
+// which made the `window-all-closed` handler throw a ReferenceError on
+// shutdown (caught and logged as `_startupTimeout is not defined`).
+let _quitting = false;
+let _startupTimeout = null;
+let _startupProgressInterval = null;
 
 // ── Event loop heartbeat ──
 // Detects if the main process event loop is blocked (causes Windows "not responding")
@@ -23,6 +32,45 @@ let _heartbeatInterval = setInterval(() => {
   }
   _heartbeatLastTick = now;
 }, 2000);
+
+/** Shared cleanup used by every quit path (before-quit, window-all-closed).
+ *  Idempotent: only the first invocation runs; subsequent calls short-circuit
+ *  on the `_quitting` guard so we never double-kill children or flush logs twice. */
+async function gracefulShutdown() {
+  if (_quitting) return;
+  _quitting = true;
+  try {
+    // Clear startup timers
+    if (_startupTimeout) clearTimeout(_startupTimeout);
+    if (_startupProgressInterval) clearInterval(_startupProgressInterval);
+
+    if (sessionManager && project) {
+      const activeId = sessionManager.getActiveSession();
+      if (activeId) {
+        try { sessionManager.saveCurrentTo(activeId); } catch (e) {}
+        // Best-effort abort of any in-flight generation so the OpenCode
+        // child process can exit cleanly instead of being killed mid-stream.
+        try {
+          const client = instanceManager.getClient(project.id);
+          if (client) await client.abortSession(activeId);
+        } catch (e) {
+          log.warn('SYSTEM', 'Abort on shutdown failed:', e && e.message);
+        }
+      }
+    }
+    if (syncroClient) {
+      syncroClient.shutdown();
+    }
+    await instanceManager.killAll();
+    cleanupAllSSEBridges();
+    await log.shutdown(); // Flush logs before exit
+  } catch (e) {
+    log.warn('SYSTEM', 'Cleanup error during shutdown:', e && e.message);
+  } finally {
+    clearInterval(_heartbeatInterval);
+    app.exit(0);
+  }
+}
 
 app.whenReady().then(async () => {
   // ── Ensure only one EasyRo instance runs ──
@@ -42,36 +90,10 @@ app.whenReady().then(async () => {
 
   // ── Clean shutdown: kill child processes (SyncRo + OpenCode/Bun tree) on ANY
   //    quit path, then force-exit so the main process can never become a zombie. ──
-  let _quitting = false;
-  let _startupTimeout = null;
-  let _startupProgressInterval = null;
   app.on('before-quit', (event) => {
     if (_quitting) return;
-    _quitting = true;
-    event.preventDefault();
-    (async () => {
-      try {
-        // Clear startup timers
-        if (_startupTimeout) clearTimeout(_startupTimeout);
-        if (_startupProgressInterval) clearInterval(_startupProgressInterval);
-        
-        if (sessionManager) {
-          const activeId = sessionManager.getActiveSession();
-          if (activeId) { try { sessionManager.saveCurrentTo(activeId); } catch (e) {} }
-        }
-        if (syncroClient) {
-          syncroClient.shutdown();
-        }
-        await instanceManager.killAll();
-        cleanupAllSSEBridges();
-        await log.shutdown(); // Flush logs before exit
-      } catch (e) {
-        log.warn('SYSTEM', 'Cleanup error during quit:', e && e.message);
-      } finally {
-        clearInterval(_heartbeatInterval);
-        app.exit(0);
-      }
-    })();
+    event.preventDefault(); // hold the quit until async cleanup finishes
+    gracefulShutdown();
   });
 
   const appStart = Date.now();
@@ -85,7 +107,7 @@ app.whenReady().then(async () => {
   log.info('SYSTEM', `Main window created in ${Date.now() - appStart}ms`);
 
   log.info('SYSTEM', 'Getting project configuration...');
-  const project = getProject();
+  project = getProject();
   log.info('SYSTEM', `Project: ${project.name} (${project.id})`);
   log.info('SYSTEM', `Project path: ${project.path}`);
 
@@ -181,29 +203,10 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on('window-all-closed', async () => {
+app.on('window-all-closed', () => {
   log.info('SYSTEM', 'All windows closed, shutting down...');
-  try {
-    // Clear startup timers
-    if (_startupTimeout) clearTimeout(_startupTimeout);
-    if (_startupProgressInterval) clearInterval(_startupProgressInterval);
-    
-    if (sessionManager) {
-      const activeId = sessionManager.getActiveSession();
-      if (activeId) {
-        try { sessionManager.saveCurrentTo(activeId); } catch (e) {}
-      }
-    }
-    if (syncroClient) {
-      syncroClient.shutdown();
-    }
-    await instanceManager.killAll();
-    cleanupAllSSEBridges();
-    await log.shutdown(); // Flush logs before exit
-  } catch (e) {
-    log.warn('SYSTEM', 'Cleanup error during window-all-closed:', e && e.message);
-  } finally {
-    clearInterval(_heartbeatInterval);
-    app.exit(0);
-  }
+  // Reuse the same cleanup path as before-quit so children are always
+  // killed consistently. `_quitting` guard prevents double-execution when
+  // both events fire on Windows/Linux.
+  gracefulShutdown();
 });

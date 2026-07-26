@@ -54,9 +54,33 @@ function handlePartDelta(properties) {
 /** Reset streaming when a completed message update arrives. */
 function handleMessageUpdated(properties) {
   if (!properties) return;
+  // Defensive sessionID filter: even though sse-core.js already routes via
+  // isCurrent, an out-of-band message.updated for another session would
+  // otherwise drop our stop-button + cursor into the wrong chat.
+  const eventSession = properties.sessionID || properties.id;
+  if (eventSession && eventSession !== window.App.currentSession) return;
   const info = properties.info || properties;
   if (info.time && info.time.completed) {
+    // If the user pressed Stop while this message was streaming, surface that
+    // in the chat so the empty tail doesn't look like a successful response.
+    if (window.App.abortedByUser) {
+      window.App.abortedByUser = false;
+      if (window.Chat && window.Chat.showUsageExceed) {
+        window.Chat.showUsageExceed("Generation stopped by user");
+      }
+    }
     window.Chat.finalizeStreaming();
+    // If the trailing message is the *assistant*'s completed one, the
+    // generation is effectively over even if the session.idle event
+    // doesn't arrive for any reason. Drop out of stop-mode so the UI
+    // doesn't stay frozen on the Stop button.
+    const role = (info && info.role) || (properties.role);
+    if (!role || role === "assistant") {
+      if (window.Chat && window.Chat.setStopMode) {
+        window.Chat.setStopMode(false);
+      }
+      window.Chat.hideAllStatusIndicators();
+    }
   }
 }
 
@@ -65,7 +89,9 @@ function handleSessionStatus(properties) {
   if (!properties) return;
 
   const eventSession = properties.sessionID || properties.id;
-  if (eventSession && eventSession !== window.App.currentSession) return;
+  // Strict filter: an out-of-band session.status (e.g. from another tab
+  // or a stale event after a switch) must never mutate our UI.
+  if (!eventSession || eventSession !== window.App.currentSession) return;
 
   const statusObj = properties.status;
   const status =
@@ -94,11 +120,19 @@ function handleSessionStatus(properties) {
     const retryMsg = (statusObj && statusObj.message) || "Retrying...";
     statusEl.textContent = `Retry ${attempt} â€” ${retryMsg}`;
     window.Chat.showThinking(`Retrying (${attempt})...`);
+  } else if (status === "idle") {
+    // `session.status` with type "idle" is emitted by OpenCode whenever a
+    // generation finishes (including abort/error paths). The dedicated
+    // `session.idle` event is *also* emitted in the same tick, so to avoid
+    // doing the cleanup twice we delegate to handleSessionIdle() which is
+    // idempotent — finalizeStreaming, setStopMode, hideAllStatusIndicators
+    // and message re-fetch are all safe to run again.
+    handleSessionIdle(properties);
   }
-  // status === "idle" needs no handling here; see handleSessionIdle().
 }
 
-/** Handle the real "session.compacted" event fired when compaction finishes. */
+/** Handle the real "session.compacted" event fired when compaction finishes.
+ *  OpenCode 1.17.18 OpenAPI spec: payload is { sessionID } only. */
 function handleSessionCompacted(properties) {
   const eventSession = properties && (properties.sessionID || properties.id);
   if (eventSession && eventSession !== window.App.currentSession) return;
@@ -118,6 +152,144 @@ function handleSessionCompacted(properties) {
         })
         .catch(() => {});
     }, 100);
+  }
+}
+
+/** OpenCode 1.17+ new compaction API: a compaction round has started. */
+function handleNextCompactionStarted(properties) {
+  isCompacting = true;
+  if (window.Chat && window.Chat.showCompaction) {
+    window.Chat.showCompaction("Compacting context...");
+  }
+  // Pause streaming so the in-flight assistant bubble doesn't fight
+  // with the compaction summary.
+  if (window.SSE && typeof window.SSE.setCompacting === "function") {
+    window.SSE.setCompacting(true);
+  }
+}
+
+/** OpenCode 1.17+ new compaction API: streaming summary text. We just
+ *  stash the most recent text on window.App for the .ended event. */
+function handleNextCompactionDelta(properties) {
+  if (!properties) return;
+  if (!window.App.lastCompaction) {
+    window.App.lastCompaction = { text: "", startedAt: Date.now() };
+  }
+  if (typeof properties.text === "string") {
+    window.App.lastCompaction.text += properties.text;
+  }
+}
+
+/** OpenCode 1.17+ new compaction API: compaction round finished. */
+function handleNextCompactionEnded(properties) {
+  isCompacting = false;
+  if (window.SSE && typeof window.SSE.setCompacting === "function") {
+    window.SSE.setCompacting(false);
+  }
+  window.Chat.showCompacted();
+
+  const sessionToRefresh = window.App.currentSession;
+  if (!sessionToRefresh) return;
+  setTimeout(() => {
+    if (window.App.currentSession !== sessionToRefresh) return;
+    window.electronAPI.session
+      .messages(sessionToRefresh)
+      .then((messages) => {
+        if (window.App.currentSession !== sessionToRefresh) return;
+        window.Chat.renderMessages(messages);
+      })
+      .catch(() => {});
+  }, 100);
+}
+
+/** OpenCode 1.17+ new revert API. The .staged / .cleared / .committed
+ *  events let the UI reflect the new ephemeral "revert" state without
+ *  having to poll /session/{id}. The renderer simply re-fetches the
+ *  session list so the chat shows the correct snapshot. */
+function handleNextRevertEvent(data) {
+  const t = data && data.type;
+  if (!t) return;
+  if (t === "session.next.revert.staged") {
+    window.App.lastRevert = data.properties && data.properties.revert;
+  } else if (t === "session.next.revert.cleared") {
+    window.App.lastRevert = null;
+  } else if (t === "session.next.revert.committed") {
+    window.App.lastRevert = null;
+  }
+  // Trigger a re-fetch of the session so any revert-bound messages
+  // appear/disappear from the chat.
+  const sessionToRefresh = window.App.currentSession;
+  if (!sessionToRefresh) return;
+  window.electronAPI.session
+    .messages(sessionToRefresh)
+    .then((messages) => {
+      if (window.App.currentSession !== sessionToRefresh) return;
+      window.Chat.renderMessages(messages);
+    })
+    .catch(() => {});
+}
+
+/** OpenCode 1.17+ new question API. Re-shape v2 payload and re-use the
+ *  existing v1 modal helper. */
+function handleQuestionV2Asked(properties) {
+  if (!properties) return;
+  // v2 payload: { id, sessionID, questions: QuestionV2Info[] }
+  // v1 modal expects: { id, sessionID, questions: QuestionInfo[] }
+  const shaped = {
+    id: properties.id,
+    sessionID: properties.sessionID,
+    questions: (properties.questions || []).map((q) => ({
+      question: q.question || q.header || "",
+      header: q.header,
+      options: (q.options || []).map((o) =>
+        typeof o === "string" ? o : o.label || o.value || "",
+      ),
+    })),
+    tool: properties.tool,
+  };
+  if (window.Modals && window.Modals.showQuestionModal) {
+    window.Modals.showQuestionModal(shaped);
+  }
+}
+
+/** OpenCode 1.17+ new permission API. Re-shape v2 payload into the v1
+ *  shape the EasyRo UI already understands. */
+function handlePermissionV2Asked(properties) {
+  if (!properties) return;
+  const shaped = {
+    id: properties.id,
+    sessionID: properties.sessionID,
+    permission: properties.action,
+    patterns: properties.resources || [],
+    metadata: properties.metadata || {},
+    always: properties.save || [],
+    tool: {
+      messageID: properties.metadata && properties.metadata.messageID,
+      callID: properties.metadata && properties.metadata.callID,
+    },
+  };
+  // Reuse the existing v1 handler.
+  handlePermissionAsked(shaped);
+}
+
+/** A specific part was removed (e.g. cancelled tool, retracted text). */
+function handleMessagePartRemoved(properties) {
+  if (!properties) return;
+  const partID = properties.partID || properties.id;
+  if (!partID) return;
+  const container = Utils.$("chatArea");
+  if (!container) return;
+  // Any element tagged with data-part-id matching the removed part is
+  // orphaned and should be cleaned up.
+  const orphan = container.querySelector(`[data-part-id="${partID}"]`);
+  if (orphan) orphan.remove();
+  // If the active streaming part was removed, reset the accumulators
+  // so the next text delta starts a fresh bubble.
+  if (partID === activeTextPartID) {
+    activeTextPartID = null;
+    if (window.Chat && window.Chat.resetStreamingAccum) {
+      window.Chat.resetStreamingAccum();
+    }
   }
 }
 
@@ -151,7 +323,11 @@ function handleSessionIdle(properties) {
       .then((messages) => {
         if (window.App.currentSession !== sessionToRefresh) return;
         const msgList = messages.value || messages;
-        const existingMsgs = document.querySelectorAll("#chatArea .message");
+        // Skip the in-flight streaming bubble (if any) so the API-vs-UI
+        // count below isn't thrown off by an unfinished assistant message.
+        const existingMsgs = document.querySelectorAll(
+          "#chatArea .message:not(.ai-message-streaming)",
+        );
 
         // Update existing user messages with their IDs (they were sent without IDs)
         const uiUserMsgs = Array.from(existingMsgs).filter((m) =>
@@ -231,12 +407,24 @@ function handleSessionError(properties) {
   const eventSession = properties.sessionID || properties.id;
   if (eventSession && eventSession !== window.App.currentSession) return;
 
+  // If the user pressed Stop, the trailing message.updated(completed=true)
+  // will surface "Generation stopped by user" via the abortedByUser flag
+  // (Bug #11 fix). Showing the raw AbortedError here would create a
+  // duplicate error bubble, so suppress it.
+  const errorObj = properties.error || properties.message || properties;
+  const errorName =
+    typeof errorObj === "object" && errorObj ? errorObj.name : "";
+  if (window.App.abortedByUser && errorName === "MessageAbortedError") {
+    window.Chat.setStopMode(false);
+    isCompacting = false;
+    return;
+  }
+
   const statusEl = Utils.$("sidebarStatus");
   if (statusEl) statusEl.textContent = "Error";
   window.Chat.setStopMode(false);
   isCompacting = false;
 
-  const errorObj = properties.error || properties.message || properties;
   const errorStr =
     typeof errorObj === "string"
       ? errorObj
@@ -250,6 +438,13 @@ function handlePermissionAsked(properties) {
   if (!properties) return;
   const sessionID = properties.sessionID || properties.id;
   if (sessionID && sessionID !== window.App.currentSession) return;
+  // OpenCode sometimes sends a bare "permission.asked" with no detail (e.g.
+  // when the request was already auto-allowed). Anything more meaningful
+  // gets stored on window.App so a future permission modal can pick it up.
+  window.App.lastPermissionRequest = properties;
+  document.dispatchEvent(
+    new CustomEvent("easyro:permission-asked", { detail: properties }),
+  );
 }
 /** Update the todo list in the right panel when the backend pushes changes. */
 function handleTodoUpdated(properties) {
@@ -295,4 +490,113 @@ function handleSessionUpdated(properties) {
     session.title = title;
     window.Sessions.renderSessionList();
   }
+}
+
+/**
+ * A message was removed server-side (e.g. the trailing message after a revert
+ * gets dropped, or the CLI trimmed history). Re-render the chat so the local
+ * list stays in sync with what the server actually has.
+ */
+function handleMessageRemoved(properties) {
+  if (!properties) return;
+  const sid = properties.sessionID || properties.id;
+  if (sid && sid !== window.App.currentSession) return;
+  const sessionId = window.App.currentSession;
+  if (!sessionId) return;
+  window.electronAPI.session
+    .messages(sessionId)
+    .then((messages) => {
+      if (window.App.currentSession !== sessionId) return;
+      if (window.Chat && window.Chat.renderMessages) {
+        window.Chat.renderMessages(messages);
+      }
+    })
+    .catch((err) => {
+      console.error("[SSE] message.removed reload failed:", err);
+    });
+}
+
+/**
+ * A new session was created externally (e.g. via the `opencode` CLI or by
+ * the SyncRo plugin). Refresh the sidebar so the new card appears without
+ * requiring a manual reload.
+ */
+function handleSessionCreated(properties) {
+  if (!properties) return;
+  const info = properties.info || properties;
+  const id = info.id || properties.sessionID || properties.id;
+  const title = info.title || properties.title || "New Session";
+  if (!id) return;
+  if (window.App.sessions.some((s) => s.id === id)) return;
+  window.App.sessions.unshift({
+    id,
+    title,
+    parentID: info.parentID,
+    time: info.time,
+    attached: false,
+  });
+  if (window.Sessions && window.Sessions.renderSessionList) {
+    window.Sessions.renderSessionList();
+  }
+}
+
+/**
+ * A session was deleted externally. Remove it from the local list and
+ * clear the chat if the active session is the one that got removed.
+ */
+function handleSessionDeleted(properties) {
+  if (!properties) return;
+  const id = properties.sessionID || properties.id || (properties.info && properties.info.id);
+  if (!id) return;
+  window.App.sessions = window.App.sessions.filter((s) => s.id !== id);
+  if (window.Sessions && window.Sessions.renderSessionList) {
+    window.Sessions.renderSessionList();
+  }
+  if (window.App.currentSession === id) {
+    window.App.currentSession = null;
+    if (window.Chat && window.Chat.resetStreamingAccum) {
+      window.Chat.resetStreamingAccum();
+    }
+    if (window.Chat && window.Chat.hideAllStatusIndicators) {
+      window.Chat.hideAllStatusIndicators();
+    }
+    const chatArea = document.getElementById("chatArea");
+    const emptyState = document.getElementById("emptyState");
+    if (chatArea) {
+      chatArea
+        .querySelectorAll(".message, .streaming-cursor")
+        .forEach((m) => m.remove());
+    }
+    if (emptyState) emptyState.classList.add("active");
+    if (window.RightPanel) {
+      window.RightPanel.updateSessionName("New Chat");
+      window.RightPanel.clearTodoList();
+      window.RightPanel.updateContextStats(null);
+    }
+  }
+}
+
+/**
+ * Session diff info pushed by the backend. Currently we just log it —
+ * diff visualization is left to a future right-panel feature.
+ */
+function handleSessionDiff(properties) {
+  if (!properties) return;
+  const sid = properties.sessionID || properties.id;
+  if (sid && sid !== window.App.currentSession) return;
+  // Expose on App for any panel that wants to show it.
+  window.App.lastSessionDiff = properties;
+}
+
+/**
+ * A file was edited on disk by the SyncRo plugin or another process.
+ * We don't render chat content for it, but the right panel may want to
+ * refresh the file list. For now we just log and let consumers subscribe.
+ */
+function handleFileEdited(properties) {
+  if (!properties) return;
+  // Push a custom DOM event so any panel can listen without coupling here.
+  document.dispatchEvent(
+    new CustomEvent("easyro:file-edited", { detail: properties }),
+  );
 }

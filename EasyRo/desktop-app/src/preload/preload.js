@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Session management
   session: {
     list: () => ipcRenderer.invoke("session:list"),
+    get: (sessionId) => ipcRenderer.invoke("session:get", sessionId),
     create: (title) => ipcRenderer.invoke("session:create", title),
     delete: (sessionId) => ipcRenderer.invoke("session:delete", sessionId),
     update: (sessionId, data) =>

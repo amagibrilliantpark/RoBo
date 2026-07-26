@@ -48,7 +48,11 @@ async function selectSession(sessionId) {
         await window.electronAPI.session.abort(window.App.currentSession);
         await new Promise((r) => setTimeout(r, 300));
       } catch (e) {}
-      window.App.isProcessing = false;
+      if (window.Chat && window.Chat.setStopMode) {
+        window.Chat.setStopMode(false);
+      } else {
+        window.App.isProcessing = false;
+      }
     }
 
     // 1. Save current session's files
@@ -70,9 +74,27 @@ async function selectSession(sessionId) {
       return;
     }
 
-    // 3. Update UI
+    // 3. Update UI + reset all streaming/SSE state so a stale stream
+    //    from the previous session can't bleed into the new one.
     window.Chat.resetStreamingAccum();
     window.Chat.hideAllStatusIndicators();
+    window.Chat.removeStreamingCursor();
+    if (window.SSE && typeof window.SSE.resetState === "function") {
+      window.SSE.resetState();
+    }
+    // The abortedByUser flag is per-message; clear it on session switch.
+    window.App.abortedByUser = false;
+    // Clear the chat area immediately so the user doesn't see the
+    // previous session's messages while we wait for the new messages
+    // to load (Bug #26: initial render flicker).
+    const chatArea = Utils.$("chatArea");
+    if (chatArea) {
+      chatArea
+        .querySelectorAll(".message, .thinking-indicator, .error-indicator, .compaction-indicator, .usage-indicator, .streaming-cursor")
+        .forEach((m) => m.remove());
+    }
+    const emptyStateEl = Utils.$("emptyState");
+    if (emptyStateEl) emptyStateEl.classList.add("active");
     window.App.currentSession = sessionId;
 
     document.querySelectorAll(".session-card").forEach((c) => {
@@ -110,6 +132,20 @@ async function selectSession(sessionId) {
       }
     } catch (error) {
       console.warn(`[Session] Messages load failed:`, error.message);
+    }
+
+    // 5. Sync the model dropdown with the session's stored model so a
+    //    session created via the CLI (or on another machine) shows the
+    //    right provider/model instead of the user's last global pick.
+    try {
+      const sessionInfo = await window.electronAPI.session.get(sessionId);
+      if (window.App.currentSession !== sessionId) return;
+      const m = sessionInfo && sessionInfo.model;
+      if (m && m.providerID && m.modelID) {
+        window.Providers.selectModelFromBackend(m.providerID, m.modelID);
+      }
+    } catch (error) {
+      console.warn(`[Session] Session info load failed:`, error.message);
     }
   } finally {
     _switchingSession = false;
@@ -185,15 +221,22 @@ async function ensureSession() {
 
   _sessionCreatePromise = (async () => {
     try {
-      // Save old session if it exists in the session list
-      const lastActive = await window.electronAPI.session.getActive();
-      if (lastActive) {
-        const exists = window.App.sessions.some((s) => s.id === lastActive);
-        if (exists) {
-          try {
-            await window.electronAPI.session.saveCurrent();
-          } catch (e) {}
+      // Save old session if it exists in the session list. If the backend
+      // is unreachable or the call times out, we don't want to fail the
+      // whole "new session" flow — just create a fresh one and move on.
+      try {
+        const lastActive = await window.electronAPI.session.getActive();
+        if (lastActive) {
+          const exists = window.App.sessions.some((s) => s.id === lastActive);
+          if (exists) {
+            try {
+              await window.electronAPI.session.saveCurrent();
+            } catch (e) {}
+          }
         }
+      } catch (e) {
+        // getActive failed (timeout / 5xx) — fall through to create.
+        console.warn(`[Session] getActive failed, creating fresh session:`, e.message);
       }
 
       const session = await window.electronAPI.session.create();
@@ -204,6 +247,24 @@ async function ensureSession() {
       try {
         await window.electronAPI.session.restore(newSession.id);
       } catch (e) {}
+
+      // Bug fix: race between POST /session (returns the ID immediately)
+      // and OpenCode's internal session registration. Without this wait,
+      // the very first prompt_async hit a session that OpenCode hadn't
+      // fully wired up yet and the server answered with a `session.error`
+      // SSE event (visible to the user as "Error" in the bottom-left
+      // sidebar). The second message always worked because the session
+      // had settled by then. We poll GET /session/{id} until it
+      // resolves, which proves the session is queryable end-to-end.
+      for (let i = 0; i < 10; i++) {
+        try {
+          const verified = await window.electronAPI.session.get(newSession.id);
+          if (verified && verified.id) break;
+        } catch (e) {
+          // 404 or transient — keep polling.
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
 
       if (!newSession.title) newSession.title = "";
       window.App.currentSession = newSession.id;

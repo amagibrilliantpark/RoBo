@@ -9,6 +9,12 @@ function registerSessionHandlers(instanceManager, sessionManager, project) {
     return await client.listSessions();
   });
 
+  ipcMain.handle("session:get", async (event, sessionId) => {
+    const client = instanceManager.getClient(project.id);
+    if (!client) throw new Error("Instance not running");
+    return await client.getSession(sessionId);
+  });
+
   ipcMain.handle("session:create", async (event, title) => {
     const client = instanceManager.getClient(project.id);
     if (!client) throw new Error("Instance not running");

@@ -238,7 +238,36 @@ function openVariantPopup(model) {
   variantPopup.classList.add('active');
 }
 
-window.Providers = { loadProviders, loadAgents };
+/**
+ * Apply a model selection that came from the backend (e.g. a session's stored
+ * model) onto the dropdown. The model must exist in the current provider list,
+ * otherwise we leave the user's last manual selection alone.
+ */
+function selectModelFromBackend(providerId, modelId) {
+  if (!providerId || !modelId) return false;
+  const item = document.querySelector(
+    `#modelPopup .popup-item[data-provider="${CSS.escape(providerId)}"][data-model="${CSS.escape(modelId)}"]`,
+  );
+  if (!item) return false;
+  const modelSelector = document.getElementById("modelSelector");
+  const modelPopup = document.getElementById("modelPopup");
+  if (!modelSelector || !modelPopup) return false;
+
+  modelPopup
+    .querySelectorAll(".popup-item")
+    .forEach((i) => i.classList.remove("selected"));
+  item.classList.add("selected");
+  modelSelector.querySelector("span").textContent = item.textContent;
+
+  window.App.currentModel = { provider: providerId, model: modelId };
+  localStorage.setItem(
+    "easyro_model",
+    JSON.stringify({ provider: providerId, model: modelId }),
+  );
+  return true;
+}
+
+window.Providers = { loadProviders, loadAgents, selectModelFromBackend };
 window.App.getConnectedProviderIds = getConnectedProviderIds;
 window.App.addConnectedProvider = addConnectedProvider;
 window.App.removeConnectedProvider = removeConnectedProvider;

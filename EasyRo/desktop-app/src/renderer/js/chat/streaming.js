@@ -21,7 +21,7 @@ function appendStreamingText(text) {
 
   if (!streamingTargetMsg || !streamingTargetMsg.parentNode || streamingTargetMsg.querySelector('.msg-card')) {
     streamingTargetMsg = document.createElement('div');
-    streamingTargetMsg.className = 'message ai-message';
+    streamingTargetMsg.className = 'message ai-message ai-message-streaming';
     container.appendChild(streamingTargetMsg);
     streamingDeltaCount = 0;
     streamingRenderThreshold = 0;
@@ -82,6 +82,9 @@ function finalizeStreaming() {
   if (!streamingTargetMsg || !streamingTargetMsg.parentNode) return;
   if (!streamingTextAccum) return;
 
+  // Promote the streaming bubble to a permanent ai-message so subsequent
+  // existingMsgs counts (Bug #35) include it.
+  streamingTargetMsg.classList.remove("ai-message-streaming");
   removeStreamingCursor();
   resetStreamingAccum();
 }
@@ -93,6 +96,9 @@ function resetStreamingAccum() {
   streamingRenderPending = false;
   lastStreamingChunk = '';
   streamingRenderThreshold = 0;
+  // Strip any leftover blinking cursor from the previous run so it
+  // doesn't linger on an empty bubble after a reset.
+  removeStreamingCursor();
 }
 
 /** Add a blinking cursor element at the end of the streaming message. */

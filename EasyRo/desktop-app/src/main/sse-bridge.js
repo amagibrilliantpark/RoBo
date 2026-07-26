@@ -37,7 +37,22 @@ function setupSSEBridge(projectId, port) {
             try {
               const data = JSON.parse(dataBuffer);
               const eventType = data.type || 'unknown';
-              if (eventType.includes('session.status') || eventType.includes('message.part.updated') || eventType.includes('session.idle') || eventType.includes('message.updated')) {
+              // Log perf-relevant events (existing behavior) AND error / compact /
+              // permission / question events so they're visible in the log when
+              // the user reports a "first message error" issue. Previously
+              // session.error, permission.asked, question.asked were silently
+              // forwarded to the renderer with no main-process trace, making
+              // "Error" in sidebarStatus a mystery from the logs alone.
+              if (
+                eventType.includes('session.status') ||
+                eventType.includes('message.part.updated') ||
+                eventType.includes('session.idle') ||
+                eventType.includes('message.updated') ||
+                eventType.includes('session.error') ||
+                eventType.includes('session.compacted') ||
+                eventType.includes('permission') ||
+                eventType.includes('question')
+              ) {
                 log.info('SSE', `[Perf] event: ${eventType}`);
               }
               const mainWindow = getMainWindow();

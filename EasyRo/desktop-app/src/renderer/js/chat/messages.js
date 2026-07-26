@@ -67,8 +67,9 @@ function createMessageElement(role, text, messageId = null) {
 /** Append a single message bubble to the chat area. */
 function appendMessage(role, text, messageId = null) {
   const container = Utils.$('chatArea');
+  if (!container) return null;
   const emptyState = Utils.$('emptyState');
-  emptyState.classList.remove('active');
+  if (emptyState) emptyState.classList.remove('active');
 
   const msg = createMessageElement(role, text, messageId);
   container.appendChild(msg);

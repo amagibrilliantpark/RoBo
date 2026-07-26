@@ -1,7 +1,7 @@
 const path = require('path');
 const log = require('./logger');
 const { OpenCodeClient } = require('./opencode-client');
-const { startOpencode, startSyncRo, findSyncRoExecutable, killProcessesOnPorts, killProcessTree, sleep } = require('./process-manager');
+const { startOpencode, startSyncRo, findSyncRoExecutable, killProcessesOnPorts, killProcessTree, killByImageName, sleep } = require('./process-manager');
 
 /** Manages SyncRo and OpenCode child processes per project. */
 class InstanceManager {
@@ -145,7 +145,10 @@ class InstanceManager {
       const p = instance.syncroProcess;
       exitPromises.push(new Promise((resolve) => {
         p.on('exit', resolve);
-        p.kill();
+        // Tree-kill alone is enough: `taskkill /F /T /PID` is already a
+        // TerminateProcess + walk-children combo. Calling `p.kill()` first
+        // would race with the tree-kill on the same PID, which previously
+        // orphaned the OpenCode/Bun sub-tree on Windows.
         killProcessTree(p.pid);
       }));
     }
@@ -153,7 +156,6 @@ class InstanceManager {
       const p = instance.opencodeProcess;
       exitPromises.push(new Promise((resolve) => {
         p.on('exit', resolve);
-        p.kill();
         killProcessTree(p.pid);
       }));
     }
@@ -165,14 +167,29 @@ class InstanceManager {
       ]);
     }
 
+    // Safety net: some grandchildren (notably Bun runtime workers spawned
+    // by opencode.exe) can reparent to the system root and escape a
+    // PID-based tree kill. Match by image name as a final sweep.
+    await killByImageName(['opencode.exe', 'syncro.exe', 'bun.exe']);
+
     instance.status = 'stopped';
     this.instances.delete(projectId);
   }
 
   /** Stop all running instances. */
   async killAll() {
+    // Snapshot ports BEFORE stopInstance clears the map.
+    const portPairs = [];
+    for (const instance of this.instances.values()) {
+      if (instance.ports) portPairs.push(instance.ports);
+    }
     for (const [projectId] of this.instances) {
       await this.stopInstance(projectId);
+    }
+    // Final port-based sweep: anything that survived PID + image-name kills
+    // is still bound to a port, so it can't be "wanted". Belt and braces.
+    for (const ports of portPairs) {
+      await killProcessesOnPorts(ports.syncro, ports.opencode);
     }
   }
 
