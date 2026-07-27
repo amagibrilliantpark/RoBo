@@ -42,7 +42,7 @@ You have two options for the AI backend:
 1. **Free models** — OpenCode offers free models out of the box. Just start EasyRo and start using it, no API key needed.
 2. **Your own API key** — If you have any API key, you can connect it directly from EasyRo: click **Add** in the model selector, pick a provider (or add a custom one), and enter your API key or complete the OAuth flow. No terminal needed.
 
-OpenCode CLI and SyncRo are included in the installer — you don't need to install them separately.
+OpenCode (bundled as opencode.exe) and SyncRo are included in the installer — you don't need to install them separately.
 
 ## Usage
 
@@ -57,14 +57,19 @@ OpenCode CLI and SyncRo are included in the installer — you don't need to inst
 
 ```
 EasyRo/
-├── src/                         # Roblox game source
-├── desktop-app/                 # Electron desktop application
-├── syncro.exe                   # SyncRo binary
-├── SyncRo.rbxmx                 # SyncRo plugin
-├── default.project.json         # SyncRo project config
-├── opencode.json                # OpenCode config
+├── .sessions/                   # Session file snapshots
 ├── AGENTS.md                    # AI behavior instructions
-└── .sessions/                   # Session file snapshots
+├── SyncRo.rbxmx                 # SyncRo plugin
+├── assets/                      # Assets (logo, banner)
+├── default.project.json         # SyncRo project config
+├── desktop-app/                 # Electron desktop application
+├── logs/                        # Logs
+├── opencode.exe                 # OpenCode binary (bundled)
+├── opencode.json                # OpenCode config
+├── plugin/                      # Plugin files
+├── src/                         # Roblox game source
+├── syncro.exe                   # SyncRo binary
+└── tests/                       # Tests
 ```
 
 ## Session isolation
