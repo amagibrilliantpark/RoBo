@@ -1,7 +1,7 @@
 const path = require('path');
 const log = require('./logger');
 const { OpenCodeClient } = require('./opencode-client');
-const { startOpencode, startSyncRo, findSyncRoExecutable, killProcessesOnPorts, killProcessTree, killByImageName, sleep } = require('./process-manager');
+const { startOpencode, startSyncRo, findSyncRoExecutable, killProcessesOnPorts, killProcessTree, killByImageName, gracefulKill, isPidAlive, sleep } = require('./process-manager');
 
 /** Manages SyncRo and OpenCode child processes per project. */
 class InstanceManager {
@@ -134,37 +134,63 @@ class InstanceManager {
     throw new Error('Health check timeout');
   }
 
-  /** Gracefully stop both child processes for a project. */
+  /** Gracefully stop both child processes for a project.
+   *  Shutdown order (both run in parallel via Promise.all):
+   *    1) Fire `exit`-waiters on each process so we can report codes 0, not 1.
+   *    2) `killProcessTree` issues graceful (taskkill /PID no /F) → 1500ms grace → force /F /T.
+   *    3) 5s upper bound on both via Promise.race.
+   *    4) killByImageName (opencode.exe, syncro.exe, bun.exe) + port sweep as safety net. */
   async stopInstance(projectId) {
     const instance = this.instances.get(projectId);
     if (!instance) return;
 
     const exitPromises = [];
+    const pids = [];
 
-    if (instance.syncroProcess) {
-      const p = instance.syncroProcess;
+    function attachExitWaiter(label, p) {
+      if (!p) return;
+      pids.push(p.pid);
       exitPromises.push(new Promise((resolve) => {
-        p.on('exit', resolve);
-        // Tree-kill alone is enough: `taskkill /F /T /PID` is already a
-        // TerminateProcess + walk-children combo. Calling `p.kill()` first
-        // would race with the tree-kill on the same PID, which previously
-        // orphaned the OpenCode/Bun sub-tree on Windows.
-        killProcessTree(p.pid);
+        if (p.killed || p.exitCode !== null) { resolve(p.exitCode); return; }
+        let settled = false;
+        const done = (code) => { if (settled) return; settled = true; resolve(code); };
+        p.once('exit', done);
+        p.once('close', done);
+        // Failsafe: in case 'exit' never fires (broken pipe etc.), resolve
+        // after the outer race timeout takes over.
       }));
+      log.info('INSTANCE', `Stopping ${label} (pid=${p.pid}) — graceful then force`);
     }
-    if (instance.opencodeProcess) {
-      const p = instance.opencodeProcess;
-      exitPromises.push(new Promise((resolve) => {
-        p.on('exit', resolve);
-        killProcessTree(p.pid);
-      }));
+
+    attachExitWaiter('SyncRo',   instance.syncroProcess);
+    attachExitWaiter('OpenCode', instance.opencodeProcess);
+
+    // Kick off graceful→force tree-kills in parallel. `killProcessTree`
+    // already waits the grace period internally.
+    const killTasks = [];
+    if (instance.syncroProcess && instance.syncroProcess.pid) {
+      killTasks.push(killProcessTree(instance.syncroProcess.pid));
+    }
+    if (instance.opencodeProcess && instance.opencodeProcess.pid) {
+      killTasks.push(killProcessTree(instance.opencodeProcess.pid));
     }
 
     if (exitPromises.length > 0) {
+      const killsDone = Promise.all(killTasks);
+      const exitsDone = Promise.allSettled(exitPromises);
       await Promise.race([
-        Promise.all(exitPromises),
-        sleep(5000)
+        Promise.all([killsDone, exitsDone]),
+        sleep(7000),
       ]);
+      // Log exit codes once we've waited. Note: a "code 1" at this point
+      // would mean the process died in its own cleanup, not because we
+      // force-killed it mid-flight.
+      if (instance.syncroProcess && instance.syncroProcess.exitCode !== null) {
+        log.info('SYNCRO', `Stop complete: exit code ${instance.syncroProcess.exitCode}`);
+      }
+      if (instance.opencodeProcess && instance.opencodeProcess.exitCode !== null) {
+        log.info('OPENCODE', `Stop complete: exit code ${instance.opencodeProcess.exitCode}`);
+      }
     }
 
     // Safety net: some grandchildren (notably Bun runtime workers spawned

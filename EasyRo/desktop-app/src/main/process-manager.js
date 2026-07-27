@@ -394,9 +394,25 @@ async function startSyncRo(instance) {
 
     child.stderr.on('data', (data) => {
       stderrBuffer += data.toString();
-      const clean = stderrBuffer.replace(/\x1b\[[0-9;]*m/g, '').toLowerCase();
-      log.warn('SYNCRO', 'stderr:', clean.trim());
-      if ((clean.includes('error') && !clean.includes('no error')) || clean.includes('fatal') || clean.includes('failed')) {
+      const raw = stderrBuffer.replace(/\x1b\[[0-9;]*m/g, '');
+      const clean = raw.toLowerCase();
+      // Chokidar EPERM/ENOSPC watch errors are harmless noise on Windows:
+      // SyncRo tries to watch protected paths (node_modules/.cache, .git/objects,
+      // desktop-app/dist, etc.) and fails. Down-level from WARN → INFO so the
+      // user doesn't see red warnings for something that doesn't affect push.
+      const isHarmlessWatchError =
+        /chokidar error/.test(clean) &&
+        (/eperm/.test(clean) || /enospc/.test(clean) || /operation not permitted/.test(clean) || /watch\s*$/.test(clean.trim()));
+      if (isHarmlessWatchError) {
+        // Still log but at INFO and only first occurrence per start to avoid spam.
+        if (!child._harmlessWatchWarned) {
+          child._harmlessWatchWarned = true;
+          log.info('SYNCRO', 'chokidar watch errors on protected paths detected (ignored, push unaffected)');
+        }
+      } else {
+        log.warn('SYNCRO', 'stderr:', raw.trim());
+      }
+      if ((clean.includes('error') && !clean.includes('no error') && !clean.includes('chokidar error')) || clean.includes('fatal') || clean.includes('failed')) {
         if (!started) {
           started = true;
           clearInterval(progressLog);
@@ -461,18 +477,74 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/** Kill a process AND its entire child tree.
- *  Windows: `taskkill /F /T` kills the cmd.exe wrapper AND the Bun/OpenCode
- *  grandchild (spawned via shell:true) that a plain child.kill() would orphan.
- *  POSIX: SIGTERM to the process group + pid. */
+/** Check whether a PID is still alive (running). */
+function isPidAlive(pid) {
+  if (!pid || pid <= 0) return false;
+  try {
+    if (process.platform === 'win32') {
+      const out = require('child_process').execSync(
+        `tasklist /FI "PID eq ${pid}" /NH`,
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 }
+      );
+      return out.trim().length > 0 && !/no tasks are running/i.test(out);
+    } else {
+      process.kill(pid, 0);
+      return true;
+    }
+  } catch {
+    return false;
+  }
+}
+
+/** Kill a process gracefully first (so cleanup runs and exit code is clean),
+ *  then force-kill only if it survives the grace period.
+ *  Windows: `taskkill /PID` (WM_CLOSE / CTRL_C) without /F is a polite request.
+ *  POSIX:   SIGTERM. */
+async function gracefulKill(pid, graceMs = 1500) {
+  if (!pid || !isPidAlive(pid)) return;
+  try {
+    if (process.platform === 'win32') {
+      // /PID without /F sends a graceful terminate. We intentionally do NOT
+      // use /T here for the first pass so the main process can cleanly
+      // reap its own children; the follow-up force pass uses /F /T.
+      await execAsync(`taskkill /PID ${pid}`, 3000);
+    } else {
+      try { process.kill(-pid, 'SIGTERM'); } catch {}
+      try { process.kill(pid, 'SIGTERM'); } catch {}
+    }
+  } catch {
+    // Polite kill failed (e.g. permission denied) — skip grace and fall
+    // through to force. Nothing to log, the force pass is coming anyway.
+  }
+  // Wait up to `graceMs` for the process to exit on its own.
+  const start = Date.now();
+  while (Date.now() - start < graceMs && isPidAlive(pid)) {
+    await sleep(100);
+  }
+}
+
+/** Kill a process AND its entire child tree, gracefully-then-forcefully.
+ *  Windows:
+ *    Pass 1: taskkill /PID (no /F) = graceful terminate request.
+ *            Wait ~1.5s for clean exit.
+ *    Pass 2: taskkill /F /T = hard terminate tree (exit codes 1 prevention
+ *            gone — most processes will report clean 0 from pass 1).
+ *  POSIX:
+ *    Pass 1: SIGTERM to process group + pid, wait.
+ *    Pass 2: SIGKILL to process group + pid. */
 async function killProcessTree(pid) {
   if (!pid) return;
   try {
     if (process.platform === 'win32') {
-      await execAsync(`taskkill /F /T /PID ${pid}`, 5000);
+      await gracefulKill(pid, 1500);
+      if (isPidAlive(pid)) {
+        // Still running after grace — aggressive tree kill.
+        try { await execAsync(`taskkill /F /T /PID ${pid}`, 5000); } catch {}
+      }
     } else {
-      try { process.kill(-pid, 'SIGTERM'); } catch {}
-      try { process.kill(pid, 'SIGTERM'); } catch {}
+      await gracefulKill(pid, 1500);
+      try { process.kill(-pid, 'SIGKILL'); } catch {}
+      try { process.kill(pid, 'SIGKILL'); } catch {}
     }
   } catch {}
 }
@@ -499,4 +571,4 @@ async function killByImageName(names) {
   }
 }
 
-module.exports = { startOpencode, startSyncRo, findSyncRoExecutable, findOpencodeExecutable, checkOpencodeVersion, downloadOpencodeBinary, killProcessesOnPorts, killProcessTree, killByImageName, sleep };
+module.exports = { startOpencode, startSyncRo, findSyncRoExecutable, findOpencodeExecutable, checkOpencodeVersion, downloadOpencodeBinary, killProcessesOnPorts, killProcessTree, killByImageName, gracefulKill, isPidAlive, sleep };
