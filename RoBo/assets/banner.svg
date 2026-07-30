@@ -13,7 +13,7 @@
   
   <!-- RoBo text - one word, no space -->
   <text x="240" y="175" font-family="Space Grotesk, sans-serif" font-size="90" font-weight="600" letter-spacing="8" fill="#18283a">Ro</text>
-  <text x="340" y="175" font-family="Space Grotesk, sans-serif" font-size="90" font-weight="400" letter-spacing="8" fill="#4e87bb">Bo</text>
+  <text x="380" y="175" font-family="Space Grotesk, sans-serif" font-size="90" font-weight="400" letter-spacing="8" fill="#4e87bb">Bo</text>
   
   <!-- Tagline -->
   <text x="242" y="215" font-family="DM Sans, sans-serif" font-size="22" font-weight="500" fill="#a0b8d0">AI-powered coding for Roblox Studio</text>
