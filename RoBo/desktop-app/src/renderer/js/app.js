@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     await window.Providers.loadAgents();
 
     // Restore saved agent
-    const savedAgent = localStorage.getItem('easyro_agent');
+    const savedAgent = localStorage.getItem('robo_agent');
     if (savedAgent) {
       window.App.currentAgent = savedAgent;
       const modeSelector = Utils.$('modeSelector');
@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modeSelector.querySelector('span').textContent = item.textContent;
       modePopup.classList.remove('active');
       window.App.currentAgent = item.dataset.value;
-      localStorage.setItem('easyro_agent', item.dataset.value);
+      localStorage.setItem('robo_agent', item.dataset.value);
     });
   });
 

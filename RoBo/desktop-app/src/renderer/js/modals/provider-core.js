@@ -71,7 +71,7 @@
    *  list). Persisted so they keep showing in the modal after reopening it. */
   function getExtraProviderIds() {
     try {
-      const raw = localStorage.getItem('easyro_extra_providers');
+      const raw = localStorage.getItem('robo_extra_providers');
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
@@ -82,12 +82,12 @@
     const list = getExtraProviderIds();
     if (!list.includes(id)) {
       list.push(id);
-      localStorage.setItem('easyro_extra_providers', JSON.stringify(list));
+      localStorage.setItem('robo_extra_providers', JSON.stringify(list));
     }
   }
   function removeExtraProvider(id) {
     const list = getExtraProviderIds().filter((x) => x !== id);
-    localStorage.setItem('easyro_extra_providers', JSON.stringify(list));
+    localStorage.setItem('robo_extra_providers', JSON.stringify(list));
   }
   M.getExtraProviderIds = getExtraProviderIds;
   M.addExtraProvider = addExtraProvider;

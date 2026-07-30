@@ -1,9 +1,9 @@
 {
-  "name": "easyro-desktop",
+  "name": "robo-desktop",
   "version": "2.0.3",
-  "description": "EasyRo - Roblox Studio AI Assistant",
+  "description": "RoBo - Roblox Studio AI Assistant",
   "main": "src/main/main.js",
-  "author": "EasyRo",
+  "author": "RoBo",
   "license": "AGPL-3.0",
   "scripts": {
     "start": "electron .",
@@ -19,8 +19,8 @@
     "build:linux": "electron-builder --linux"
   },
   "build": {
-    "appId": "com.easyro.desktop",
-    "productName": "EasyRo",
+    "appId": "com.robo.desktop",
+    "productName": "RoBo",
     "directories": {
       "output": "dist"
     },
@@ -116,7 +116,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": false,
       "createStartMenuShortcut": true,
-      "shortcutName": "EasyRo",
+      "shortcutName": "RoBo",
       "deleteAppDataOnUninstall": true,
       "installerLanguages": [
         "en_US"

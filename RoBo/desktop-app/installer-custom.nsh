@@ -6,7 +6,7 @@ ManifestDPIAwareness "PerMonitorV2,System"
 !ifdef UNINSTALL_DISPLAY_NAME
   !undef UNINSTALL_DISPLAY_NAME
 !endif
-!define UNINSTALL_DISPLAY_NAME "EasyRo"
+!define UNINSTALL_DISPLAY_NAME "RoBo"
 
 # ── Desktop shortcut checkbox via Components page ──
 !ifndef BUILD_UNINSTALLER
@@ -16,7 +16,7 @@ ManifestDPIAwareness "PerMonitorV2,System"
 
   Section "Desktop Shortcut" SecDesktopShortcut
     SectionIn 1
-    CreateShortCut "$DESKTOP\EasyRo.lnk" "$INSTDIR\EasyRo.exe" "" "$INSTDIR\EasyRo.exe" 0
+    CreateShortCut "$DESKTOP\RoBo.lnk" "$INSTDIR\RoBo.exe" "" "$INSTDIR\RoBo.exe" 0
     # Refresh icon cache to ensure icon displays correctly
     System::Call 'shell32.dll::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
   SectionEnd
@@ -40,18 +40,18 @@ ManifestDPIAwareness "PerMonitorV2,System"
     FunctionEnd
   !macroend
 
-  # ── Install: Add firewall exception for EasyRo ──
+  # ── Install: Add firewall exception for RoBo ──
   !macro customInstall
     # Add firewall rule for main executable
-    ExecWait 'netsh advfirewall firewall add rule name="EasyRo" dir=in action=allow program="$INSTDIR\EasyRo.exe" enable=yes'
+    ExecWait 'netsh advfirewall firewall add rule name="RoBo" dir=in action=allow program="$INSTDIR\RoBo.exe" enable=yes'
     # Add firewall rule for SyncRo
-    ExecWait 'netsh advfirewall firewall add rule name="EasyRo SyncRo" dir=in action=allow program="$INSTDIR\resources\syncro.exe" enable=yes'
+    ExecWait 'netsh advfirewall firewall add rule name="RoBo SyncRo" dir=in action=allow program="$INSTDIR\resources\syncro.exe" enable=yes'
   !macroend
 
 !else
   # ── Uninstall: Remove desktop shortcut if it exists ──
   !macro customUnInit
-    Delete "$DESKTOP\EasyRo.lnk"
+    Delete "$DESKTOP\RoBo.lnk"
     # Refresh icon cache after deletion
     System::Call 'shell32.dll::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
   !macroend
@@ -59,7 +59,7 @@ ManifestDPIAwareness "PerMonitorV2,System"
   # ── Uninstall: Remove firewall rules ──
   !macro customUnInstall
     # Remove firewall rules
-    ExecWait 'netsh advfirewall firewall delete rule name="EasyRo"'
-    ExecWait 'netsh advfirewall firewall delete rule name="EasyRo SyncRo"'
+    ExecWait 'netsh advfirewall firewall delete rule name="RoBo"'
+    ExecWait 'netsh advfirewall firewall delete rule name="RoBo SyncRo"'
   !macroend
 !endif

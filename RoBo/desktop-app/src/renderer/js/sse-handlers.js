@@ -443,7 +443,7 @@ function handlePermissionAsked(properties) {
   // gets stored on window.App so a future permission modal can pick it up.
   window.App.lastPermissionRequest = properties;
   document.dispatchEvent(
-    new CustomEvent("easyro:permission-asked", { detail: properties }),
+    new CustomEvent("robo:permission-asked", { detail: properties }),
   );
 }
 /** Update the todo list in the right panel when the backend pushes changes. */
@@ -597,6 +597,6 @@ function handleFileEdited(properties) {
   if (!properties) return;
   // Push a custom DOM event so any panel can listen without coupling here.
   document.dispatchEvent(
-    new CustomEvent("easyro:file-edited", { detail: properties }),
+    new CustomEvent("robo:file-edited", { detail: properties }),
   );
 }

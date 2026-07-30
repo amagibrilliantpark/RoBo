@@ -83,7 +83,7 @@ ${children}
 
   fs.writeFileSync(OUTPUT_FILE, rbxmx, "utf-8");
   console.log(`Plugin built: ${OUTPUT_FILE}`);
-  console.log(`EasyRo'yu ve Roblox Studio'yu yeniden baslatarak degisiklikleri gorun.`);
+  console.log(`RoBo'yu ve Roblox Studio'yu yeniden baslatarak degisiklikleri gorun.`);
 }
 
 main();

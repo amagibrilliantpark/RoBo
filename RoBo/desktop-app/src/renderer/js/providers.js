@@ -29,7 +29,7 @@ async function loadAgents() {
  *  so we track them locally to keep the checkmark / model catalog in sync. */
 function readConnectedProviderIds() {
   try {
-    const raw = localStorage.getItem('easyro_connected_providers');
+    const raw = localStorage.getItem('robo_connected_providers');
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -50,12 +50,13 @@ function addConnectedProvider(id) {
   const list = readConnectedProviderIds();
   if (!list.includes(id)) {
     list.push(id);
-    localStorage.setItem('easyro_connected_providers', JSON.stringify(list));
+    localStorage.setItem('robo_connected_providers', JSON.stringify(list));
   }
 }
 
 function removeConnectedProvider(id) {
   const list = readConnectedProviderIds().filter((x) => x !== id);
+  localStorage.setItem('robo_connected_providers', JSON.stringify(list));
   localStorage.setItem('easyro_connected_providers', JSON.stringify(list));
   if (window.App.forceShowProviders) {
     window.App.forceShowProviders = window.App.forceShowProviders.filter(
@@ -116,8 +117,8 @@ function populateModelSelector(providers) {
     ? allProviders.filter((p) => effectiveConnected.includes(p.id))
     : allProviders;
 
-  const savedModel = localStorage.getItem('easyro_model');
-  const savedVariant = localStorage.getItem('easyro_variant');
+  const savedModel = localStorage.getItem('robo_model');
+  const savedVariant = localStorage.getItem('robo_variant');
   let selectedItem = null;
   let firstItem = null;
 
@@ -148,7 +149,7 @@ function populateModelSelector(providers) {
         modelSelector.querySelector('span').textContent = name;
 
         window.App.currentModel = { provider: provider.id, model: model.id };
-        localStorage.setItem('easyro_model', JSON.stringify({ provider: provider.id, model: model.id }));
+        localStorage.setItem('robo_model', JSON.stringify({ provider: provider.id, model: model.id }));
 
         // If model has variants, open variant popup to the right (model stays open)
         const hasVariants = model.variants && Object.keys(model.variants).length > 0;
@@ -216,7 +217,7 @@ function openVariantPopup(model) {
   if (!keys.includes(currentVariant)) {
     currentVariant = keys[0];
     window.App.currentVariant = currentVariant;
-    localStorage.setItem('easyro_variant', currentVariant);
+    localStorage.setItem('robo_variant', currentVariant);
   }
 
   keys.forEach(key => {
@@ -228,7 +229,7 @@ function openVariantPopup(model) {
       variantPopup.querySelectorAll('.popup-item').forEach(i => i.classList.remove('selected'));
       item.classList.add('selected');
       window.App.currentVariant = key;
-      localStorage.setItem('easyro_variant', key);
+      localStorage.setItem('robo_variant', key);
       variantPopup.classList.remove('active');
       document.getElementById('modelPopup').classList.remove('active');
     });
@@ -261,7 +262,7 @@ function selectModelFromBackend(providerId, modelId) {
 
   window.App.currentModel = { provider: providerId, model: modelId };
   localStorage.setItem(
-    "easyro_model",
+    "robo_model",
     JSON.stringify({ provider: providerId, model: modelId }),
   );
   return true;

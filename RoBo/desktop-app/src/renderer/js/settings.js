@@ -40,7 +40,7 @@ window.Settings = {
 
     function setTheme(theme) {
       document.body.setAttribute('data-theme', theme);
-      localStorage.setItem('easyro_theme', theme);
+      localStorage.setItem('robo_theme', theme);
       
       lightThemeBtn.classList.toggle('active', theme === 'light');
       darkThemeBtn.classList.toggle('active', theme === 'dark');
@@ -49,7 +49,7 @@ window.Settings = {
       }
     }
 
-    const savedTheme = localStorage.getItem('easyro_theme') || 'light';
+    const savedTheme = localStorage.getItem('robo_theme') || 'light';
     setTheme(savedTheme);
 
     lightThemeBtn.addEventListener('click', () => { setTheme('light'); });

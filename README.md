@@ -1,19 +1,19 @@
 <p align="center">
-  <img src="./EasyRo/assets/logo.svg" alt="EasyRo Logo" width="120">
+  <img src="./RoBo/assets/logo.svg" alt="RoBo Logo" width="120">
 </p>
 
 <p align="center">
-  <a href="https://github.com/amagibrilliantpark/EasyRo/releases">
-    <img src="https://img.shields.io/github/v/release/amagibrilliantpark/EasyRo?style=for-the-badge&logo=github&color=blue" alt="Version">
+  <a href="https://github.com/amagibrilliantpark/RoBo/releases">
+    <img src="https://img.shields.io/github/v/release/amagibrilliantpark/RoBo?style=for-the-badge&logo=github&color=blue" alt="Version">
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/amagibrilliantpark/EasyRo?style=for-the-badge&color=brightgreen" alt="License">
+    <img src="https://img.shields.io/github/license/amagibrilliantpark/RoBo?style=for-the-badge&color=brightgreen" alt="License">
   </a>
 </p>
 
-![EasyRo Banner](./EasyRo/assets/banner.svg)
+![RoBo Banner](./RoBo/assets/banner.svg)
 
-# EasyRo
+# RoBo
 
 A desktop app that brings AI-powered agentic coding assistance to Roblox Studio. It connects an AI agent to your project through SyncRo, so the AI can read and write code that syncs directly into Studio.
 
@@ -23,7 +23,7 @@ You type what you want in a chat interface. The AI writes Luau code, creates fil
 
 ## How it works
 
-EasyRo runs three things behind the scenes:
+RoBo runs three things behind the scenes:
 
 - **Electron app** — the UI you interact with
 - **OpenCode server** — handles the AI conversations
@@ -33,21 +33,21 @@ When you send a message, it goes to OpenCode. The AI reads your project files, w
 
 ## Requirements
 
-- **Roblox Studio** — EasyRo automatically installs the SyncRo plugin into Roblox Studio's Plugins folder on first launch, and the plugin connects to EasyRo automatically when you open Studio. No manual install or connection is needed; just have Roblox Studio installed.
+- **Roblox Studio** — RoBo automatically installs the SyncRo plugin into Roblox Studio's Plugins folder on first launch, and the plugin connects to RoBo automatically when you open Studio. No manual install or connection is needed; just have Roblox Studio installed.
 
 ### Using OpenCode
 
 You have two options for the AI backend:
 
-1. **Free models** — OpenCode offers free models out of the box. Just start EasyRo and start using it, no API key needed.
-2. **Your own API key** — If you have any API key, you can connect it directly from EasyRo: click **Add** in the model selector, pick a provider (or add a custom one), and enter your API key or complete the OAuth flow. No terminal needed.
+1. **Free models** — OpenCode offers free models out of the box. Just start RoBo and start using it, no API key needed.
+2. **Your own API key** — If you have any API key, you can connect it directly from RoBo: click **Add** in the model selector, pick a provider (or add a custom one), and enter your API key or complete the OAuth flow. No terminal needed.
 
 OpenCode (bundled as opencode.exe) and SyncRo are included in the installer — you don't need to install them separately.
 
 ## Usage
 
 1. Open Roblox Studio and load your project
-2. Start EasyRo
+2. Start RoBo
 3. **SyncRo connects automatically** — The SyncRo plugin connects to the server automatically when you open Studio
 4. Type what you want in the chat — the AI writes code and SyncRo syncs it to Studio
 
@@ -56,7 +56,7 @@ OpenCode (bundled as opencode.exe) and SyncRo are included in the installer — 
 ## Project structure
 
 ```
-EasyRo/
+RoBo/
 ├── .sessions/                   # Session file snapshots
 ├── AGENTS.md                    # AI behavior instructions
 ├── SyncRo.rbxmx                 # SyncRo plugin
