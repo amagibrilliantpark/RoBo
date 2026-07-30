@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.electronAPI.onProjectReady(async (data) => {
     const sidebarStatusEl = Utils.$('sidebarStatus');
-    if (sidebarStatusEl) sidebarStatusEl.textContent = 'Ready — ' + data.name;
+    if (sidebarStatusEl) sidebarStatusEl.textContent = 'Ready';
 
     await window.Sessions.loadSessions();
     await window.Providers.loadProviders();
