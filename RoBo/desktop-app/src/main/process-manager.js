@@ -2,6 +2,7 @@ const { spawn, exec, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const unzipper = require('unzipper');
 const log = require('./logger');
 
 /** Execute a shell command asynchronously with timeout. */
@@ -286,60 +287,74 @@ async function checkOpencodeVersion(opencodePath) {
   }
 }
 
-/** Download the bundled OpenCode v1.17.18 binary. The version is a
- *  constant on purpose — we pin to a known-good build so RoBo and the
- *  CLI can never drift. The destination is always <projectPath>/opencode.exe,
- *  which is also the first place startOpencode() looks for an existing copy. */
+/** Download OpenCode v1.17.18 as a .zip and extract opencode.exe.
+ *  The version is a constant on purpose — we pin to a known-good build
+ *  so RoBo and the CLI can never drift. The destination is always
+ *  <projectPath>/opencode.exe. */
+function downloadWithRedirect(url, zipPath) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(zipPath);
+    function follow(currentUrl) {
+      https.get(currentUrl, (response) => {
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          follow(response.headers.location);
+          return;
+        }
+        if (response.statusCode !== 200) {
+          file.close(() => fs.unlink(zipPath, () => {}));
+          reject(new Error(`Download failed with status ${response.statusCode}`));
+          return;
+        }
+        const totalSize = parseInt(response.headers['content-length'], 10);
+        let downloadedSize = 0;
+        response.on('data', (chunk) => {
+          downloadedSize += chunk.length;
+          if (totalSize) {
+            const progress = Math.round((downloadedSize / totalSize) * 100);
+            if (progress % 10 === 0) log.info('OPENCODE', `Download progress: ${progress}%`);
+          }
+        });
+        response.pipe(file);
+        file.on('finish', () => file.close(() => resolve()));
+        file.on('error', reject);
+      }).on('error', reject);
+    }
+    follow(url);
+  });
+}
+
 async function downloadOpencodeBinary(projectPath) {
   const VERSION = '1.17.18';
-  const downloadUrl = `https://github.com/anomalyco/opencode/releases/download/v${VERSION}/opencode-windows-x64.exe`;
+  const downloadUrl = `https://github.com/anomalyco/opencode/releases/download/v${VERSION}/opencode-windows-x64.zip`;
   const targetPath = path.join(projectPath, 'opencode.exe');
+  const zipPath = path.join(projectPath, 'opencode-temp.zip');
 
   log.info('OPENCODE', `Downloading OpenCode v${VERSION} from ${downloadUrl}`);
 
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(targetPath);
+  try {
+    await downloadWithRedirect(downloadUrl, zipPath);
+    log.info('OPENCODE', `Download complete, extracting opencode.exe...`);
 
-    https.get(downloadUrl, (response) => {
-      if (response.statusCode !== 200) {
-        reject(new Error(`Download failed with status ${response.statusCode}`));
-        return;
-      }
+    const dir = await unzipper.Open.file(zipPath);
+    const exe = dir.files.find(f => f.path === 'opencode.exe');
+    if (!exe) {
+      throw new Error('opencode.exe not found inside zip');
+    }
 
-      const totalSize = parseInt(response.headers['content-length'], 10);
-      let downloadedSize = 0;
-
-      response.on('data', (chunk) => {
-        downloadedSize += chunk.length;
-        const progress = Math.round((downloadedSize / totalSize) * 100);
-        if (progress % 10 === 0) {
-          log.info('OPENCODE', `Download progress: ${progress}%`);
-        }
-      });
-
-      response.pipe(file);
-
-      file.on('finish', () => {
-        file.close(() => {
-          // Make sure the binary is executable on POSIX. On Windows the
-          // file is already executable by extension, but on macOS/Linux
-          // dev setups this matters.
-          if (process.platform !== 'win32') {
-            try { fs.chmodSync(targetPath, 0o755); } catch {}
-          }
-          log.info('OPENCODE', `OpenCode v${VERSION} installed at ${targetPath}`);
-          resolve(targetPath);
-        });
-      });
-
-      file.on('error', (error) => {
-        fs.unlink(targetPath, () => {});
-        reject(error);
-      });
-    }).on('error', (error) => {
-      reject(error);
+    await new Promise((resolve, reject) => {
+      exe.stream()
+        .pipe(fs.createWriteStream(targetPath))
+        .on('finish', resolve)
+        .on('error', reject);
     });
-  });
+
+    fs.unlinkSync(zipPath);
+    log.info('OPENCODE', `OpenCode v${VERSION} installed at ${targetPath}`);
+    return targetPath;
+  } catch (error) {
+    fs.unlink(zipPath, () => {});
+    throw error;
+  }
 }
 
 /** Spawn the SyncRo process and resolve when it starts listening. */
