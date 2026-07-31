@@ -127,6 +127,7 @@
     }
   },
   "dependencies": {
+    "unzipper": "^0.12.3",
     "ws": "^8.16.0"
   },
   "devDependencies": {
