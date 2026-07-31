@@ -253,7 +253,7 @@ function handleQuestionV2Asked(properties) {
 }
 
 /** OpenCode 1.17+ new permission API. Re-shape v2 payload into the v1
- *  shape the EasyRo UI already understands. */
+ *  shape the RoBo UI already understands. */
 function handlePermissionV2Asked(properties) {
   if (!properties) return;
   const shaped = {

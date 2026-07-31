@@ -4,7 +4,7 @@ async function loadSessions() {
   try {
     const response = await window.electronAPI.session.list();
     const rawSessions = response.value || response || [];
-    // "attached" (pinned) is an EasyRo-only concept; the backend has no such field,
+    // "attached" (pinned) is an RoBo-only concept; the backend has no such field,
     // so we persist it inside the session's free-form `metadata` object instead.
     const allSessions = rawSessions.map((s) => ({
       ...s,

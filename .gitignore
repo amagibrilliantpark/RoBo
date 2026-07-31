@@ -9,37 +9,36 @@ Thumbs.db
 
 # Environment
 .env
-EasyRo/.env
-EasyRo/desktop-app/.env
+RoBo/.env
+RoBo/desktop-app/.env
 
 # Roblox
-/EasyRo.rbxlx
+/RoBo.rbxlx
 /*.rbxlx.lock
 /*.rbxl.lock
 sourcemap.json
 
 # Build output
-EasyRo/desktop-app/dist/
-EasyRo/desktop-app/out/
+RoBo/desktop-app/dist/
+RoBo/desktop-app/out/
 
 # Node modules
-EasyRo/desktop-app/node_modules/
+RoBo/desktop-app/node_modules/
 
 # Electron
-EasyRo/desktop-app/.webpack/
-EasyRo/desktop-app/yarn.lock
+RoBo/desktop-app/.webpack/
+RoBo/desktop-app/yarn.lock
 
 # Session snapshots
-EasyRo/.sessions/
-EasyRo/logs/
+RoBo/.sessions/
+RoBo/logs/
 
 # Temp files
 git_diff.txt
 
 # Executables
-EasyRo/opencode.exe
+RoBo/opencode.exe
 
 # Test files
 /test_*
-EasyRo/tests/
-
+RoBo/tests/

@@ -100,7 +100,7 @@ function initSSE() {
         break;
       // Note: OpenCode 1.17.18 does NOT emit "session.created" /
       // "session.deleted" as standalone SSE events (per /doc spec). The
-      // REST API /session and /session/{id} handle those flows. EasyRo
+      // REST API /session and /session/{id} handle those flows. RoBo
       // used to wire listeners that fired for every event because of
       // permissive type matching — the case statements are now omitted
       // on purpose.

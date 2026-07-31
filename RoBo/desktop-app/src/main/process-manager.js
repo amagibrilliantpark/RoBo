@@ -30,14 +30,14 @@ function execAsync(command, timeout = 5000) {
  *
  *  PATH is NOT consulted on purpose: mixing the system-wide `opencode`
  *  CLI with the bundled binary was causing session/status drift between
- *  CLI and EasyRo runs. By always running the bundled executable we get
+ *  CLI and RoBo runs. By always running the bundled executable we get
  *  one OpenCode build, one set of events, and one place to update. */
 async function startOpencode(instance) {
   const { project, ports } = instance;
   const spawnStart = Date.now();
 
   // The ONLY accepted version. We pin to a single known-good build so
-  // every EasyRo install runs the exact same OpenCode (and gets the same
+  // every RoBo install runs the exact same OpenCode (and gets the same
   // event payload shapes). Any other version gets re-downloaded.
   const TARGET_VERSION = '1.17.18';
   const DOWNLOAD_VERSION = '1.17.18';
@@ -256,7 +256,7 @@ function findOpencodeExecutable(projectPath) {
  *  - Different minor versions can change SSE event payload schemas
  *    (we just verified this against the OpenAPI spec).
  *  - Pinning to a single known-good build eliminates session drift
- *    between EasyRo and the bundled OpenCode.
+ *    between RoBo and the bundled OpenCode.
  *  - Any "newer" version found in the wild gets replaced by our
  *    v1.17.18 download — there's no situation where we'd want to
  *    honor a different version. */
@@ -287,7 +287,7 @@ async function checkOpencodeVersion(opencodePath) {
 }
 
 /** Download the bundled OpenCode v1.17.18 binary. The version is a
- *  constant on purpose — we pin to a known-good build so EasyRo and the
+ *  constant on purpose — we pin to a known-good build so RoBo and the
  *  CLI can never drift. The destination is always <projectPath>/opencode.exe,
  *  which is also the first place startOpencode() looks for an existing copy. */
 async function downloadOpencodeBinary(projectPath) {

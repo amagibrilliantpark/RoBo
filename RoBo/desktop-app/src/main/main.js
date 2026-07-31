@@ -73,7 +73,7 @@ async function gracefulShutdown() {
 }
 
 app.whenReady().then(async () => {
-  // ── Ensure only one EasyRo instance runs ──
+  // ── Ensure only one RoBo instance runs ──
   if (!app.requestSingleInstanceLock()) {
     app.quit();
     return;

@@ -96,7 +96,7 @@ function getProject() {
   const projectPath = ensureUserProject();
   ensureSyncRoPlugin();
   const projectJson = path.join(projectPath, 'default.project.json');
-  let name = 'EasyRo';
+  let name = 'RoBo';
   try {
     const config = JSON.parse(fs.readFileSync(projectJson, 'utf-8'));
     name = config.name || name;

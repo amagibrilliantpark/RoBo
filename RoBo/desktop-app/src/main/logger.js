@@ -3,7 +3,7 @@ const path = require('path');
 const { app } = require('electron');
 
 /**
- * Centralized file-based logger for EasyRo.
+ * Centralized file-based logger for RoBo.
  *
  * - Writes structured logs to a .log file
  * - Keeps console output in dev mode (--dev flag)
@@ -30,12 +30,12 @@ class Logger {
     if (app.isPackaged) {
       this.logDir = path.join(app.getPath('userData'), 'logs');
     } else {
-      // Dev mode: EasyRo/logs/ (two levels above desktop-app/)
+      // Dev mode: RoBo/logs/ (two levels above desktop-app/)
       this.logDir = path.resolve(__dirname, '..', '..', '..', 'logs');
     }
 
     fs.mkdirSync(this.logDir, { recursive: true });
-    this.logFile = path.join(this.logDir, 'easyro.log');
+    this.logFile = path.join(this.logDir, 'robo.log');
     this._initialized = true;
 
     // Rotate if file already exceeds max size
@@ -81,13 +81,13 @@ class Logger {
     }
   }
 
-  /** Rename current log to easyro-{date}.log and start fresh if > MAX_SIZE. */
+  /** Rename current log to robo-{date}.log and start fresh if > MAX_SIZE. */
   _rotateIfNeeded() {
     if (!this.logFile || !fs.existsSync(this.logFile)) return;
     const stats = fs.statSync(this.logFile);
     if (stats.size >= this.MAX_SIZE) {
       const date = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const rotated = path.join(this.logDir, `easyro-${date}.log`);
+      const rotated = path.join(this.logDir, `robo-${date}.log`);
       try {
         fs.renameSync(this.logFile, rotated);
       } catch {

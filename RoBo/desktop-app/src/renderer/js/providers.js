@@ -57,7 +57,6 @@ function addConnectedProvider(id) {
 function removeConnectedProvider(id) {
   const list = readConnectedProviderIds().filter((x) => x !== id);
   localStorage.setItem('robo_connected_providers', JSON.stringify(list));
-  localStorage.setItem('easyro_connected_providers', JSON.stringify(list));
   if (window.App.forceShowProviders) {
     window.App.forceShowProviders = window.App.forceShowProviders.filter(
       (x) => x !== id,
