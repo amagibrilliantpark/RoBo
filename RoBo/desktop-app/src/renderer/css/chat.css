@@ -171,6 +171,118 @@ body[data-theme="dark"] .ai-message pre code .code-line.diff-remove {
   display: flex;
 }
 
+/* ── Edit Mode Styles ── */
+/* In edit mode the card widens to use the horizontal space first
+   (instead of staying as narrow as the message and growing downward). */
+.user-message.edit-mode {
+  width: min(640px, 100%);
+}
+
+.user-message.edit-mode .msg-card {
+  box-shadow: 0 2px 10px var(--shadow-color);
+  background: var(--bg-input);
+  border-color: var(--accent-color);
+  width: 100%;
+  height: auto;
+  min-height: 50px;
+  max-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 44px 8px 14px; /* Extra right padding for send button */
+  position: relative;
+  overflow: hidden;
+}
+
+.user-message.edit-mode .msg-card-text {
+  display: none;
+}
+
+.user-message.edit-mode .msg-edit-textarea {
+  display: block;
+  width: 100%;
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 104px;
+  resize: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.5;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.user-message.edit-mode .msg-edit-textarea::-webkit-scrollbar {
+  width: 4px;
+}
+
+.user-message.edit-mode .msg-edit-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.user-message.edit-mode .msg-edit-textarea::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+.user-message.edit-mode .msg-edit-textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+.user-message.edit-mode .msg-revert-btn {
+  display: none;
+}
+
+.user-message.edit-mode .msg-send-btn {
+  display: flex;
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: var(--accent-color);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  border-radius: 5px;
+  color: white;
+  transition: background 0.15s;
+  z-index: 10;
+}
+
+.user-message.edit-mode .msg-send-btn:hover {
+  background: var(--accent-hover);
+}
+
+.user-message.edit-mode .msg-send-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.msg-edit-textarea {
+  display: none;
+}
+
+.msg-send-btn {
+  display: none;
+}
+
+/* Disable revert buttons when another card is in edit mode */
+.user-message.edit-mode-active .msg-revert-btn {
+  display: none !important;
+}
+
 /* ── Thinking indicator ── */
 .thinking-indicator {
   display: none; align-self: flex-start; padding: 8px 14px;

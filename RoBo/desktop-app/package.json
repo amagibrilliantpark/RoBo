@@ -1,6 +1,6 @@
 {
   "name": "robo-desktop",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "RoBo - Roblox Studio AI Assistant",
   "main": "src/main/main.js",
   "author": "RoBo",

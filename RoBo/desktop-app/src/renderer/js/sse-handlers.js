@@ -346,17 +346,35 @@ function handleSessionIdle(properties) {
           if (!uiMsg.dataset.messageId && apiMsg.info && apiMsg.info.id) {
             uiMsg.dataset.messageId = apiMsg.info.id;
             if (!uiMsg.querySelector(".msg-revert-btn")) {
+              // The card already contains .msg-card-text + .msg-edit-textarea
+              // (createMessageElement builds both from the same text). Read the
+              // visible text from .msg-card-text ONLY — reading the whole card's
+              // textContent would include the textarea's copy and duplicate the
+              // message on screen. No need to rebuild the card innerHTML.
+              const msgCard = uiMsg.querySelector(".msg-card");
+              const textDiv = msgCard
+                ? msgCard.querySelector(".msg-card-text")
+                : null;
+              const cardText = textDiv ? textDiv.textContent : "";
+
               const revertBtn = document.createElement("button");
               revertBtn.className = "msg-revert-btn";
               revertBtn.innerHTML =
                 '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h10a5 5 0 0 1 0 10H9"/><polyline points="7 14 3 10 7 6"/></svg>';
               revertBtn.title = "Revert to this point";
-              const cardText =
-                uiMsg.querySelector(".msg-card")?.textContent || "";
               revertBtn.addEventListener("click", () =>
-                window.Modals.showRevertModal(apiMsg.info.id, cardText),
+                window.Revert.startEditMode(apiMsg.info.id, cardText, uiMsg),
               );
               uiMsg.appendChild(revertBtn);
+
+              const sendBtn = document.createElement("button");
+              sendBtn.className = "msg-send-btn";
+              sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+              sendBtn.title = "Revert and send";
+              sendBtn.addEventListener("click", () =>
+                window.Revert.executeInlineRevert(apiMsg.info.id, uiMsg),
+              );
+              uiMsg.appendChild(sendBtn);
             }
           }
         }

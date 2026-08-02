@@ -48,14 +48,21 @@ function createMessageElement(role, text, messageId = null) {
   if (messageId) msg.dataset.messageId = messageId;
 
   if (role === 'user') {
-    msg.innerHTML = '<div class="msg-card">' + escapeHtml(text) + '</div>';
+    msg.innerHTML = '<div class="msg-card"><div class="msg-card-text">' + escapeHtml(text) + '</div><textarea class="msg-edit-textarea">' + escapeHtml(text) + '</textarea></div>';
     if (messageId) {
       const revertBtn = document.createElement('button');
       revertBtn.className = 'msg-revert-btn';
       revertBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h10a5 5 0 0 1 0 10H9"/><polyline points="7 14 3 10 7 6"/></svg>';
       revertBtn.title = 'Revert to this point';
-      revertBtn.addEventListener('click', () => window.Modals.showRevertModal(messageId, text));
+      revertBtn.addEventListener('click', () => window.Revert.startEditMode(messageId, text, msg));
       msg.appendChild(revertBtn);
+
+      const sendBtn = document.createElement('button');
+      sendBtn.className = 'msg-send-btn';
+      sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+      sendBtn.title = 'Revert and send';
+      sendBtn.addEventListener('click', () => window.Revert.executeInlineRevert(messageId, msg));
+      msg.appendChild(sendBtn);
     }
   } else {
     renderTextContent(msg, text);

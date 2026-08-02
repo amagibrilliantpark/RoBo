@@ -1,29 +1,97 @@
-// Revert modal state
+// Inline revert state
+let editingMessageElement = null;
 let pendingRevertMessageId = null;
-let pendingRevertMessageText = '';
 
-/** Show the revert confirmation modal with message preview. */
-function showRevertModal(messageId, messageText) {
-  pendingRevertMessageId = messageId;
-  pendingRevertMessageText = messageText;
-
-  const overlay = document.getElementById('revertModalOverlay');
-  const messagePreview = document.getElementById('rmMessagePreview');
-
-  if (messagePreview) {
-    const truncatedText = messageText.length > 100 ? messageText.substring(0, 100) + '...' : messageText;
-    messagePreview.textContent = truncatedText;
-  }
-
-  if (overlay) overlay.classList.remove('hidden');
+/** Auto-resize textarea to fit content (with max-height limit) */
+function autoResizeTextarea(textarea) {
+  textarea.style.height = 'auto';
+  const newHeight = Math.min(textarea.scrollHeight, 104); // max-height: 104px (120px card - padding)
+  textarea.style.height = newHeight + 'px';
 }
 
-/** Close the revert modal and reset state. */
-function closeRevertModal() {
-  const overlay = document.getElementById('revertModalOverlay');
-  if (overlay) overlay.classList.add('hidden');
+/** Start inline edit mode for a message card. */
+function startEditMode(messageId, messageText, messageElement) {
+  // If another card is already in edit mode, close it first
+  if (editingMessageElement) {
+    closeEditMode();
+  }
+
+  editingMessageElement = messageElement;
+  pendingRevertMessageId = messageId;
+
+  // Add edit mode class to the message element
+  messageElement.classList.add('edit-mode');
+
+  // Disable prompt input
+  const promptInput = document.querySelector('.prompt-input');
+  if (promptInput) {
+    promptInput.disabled = true;
+  }
+
+  // Disable all other revert buttons
+  document.querySelectorAll('.user-message:not(.edit-mode)').forEach(msg => {
+    msg.classList.add('edit-mode-active');
+  });
+
+  // Focus on the textarea
+  const textarea = messageElement.querySelector('.msg-edit-textarea');
+  if (textarea) {
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  }
+
+  // Add click outside listener to close edit mode
+  setTimeout(() => {
+    document.addEventListener('click', handleOutsideClick);
+  }, 0);
+}
+
+/** Close inline edit mode and reset state. */
+function closeEditMode() {
+  if (!editingMessageElement) return;
+
+  // Reset textarea
+  const textarea = editingMessageElement.querySelector('.msg-edit-textarea');
+  if (textarea) {
+    textarea.style.height = 'auto';
+  }
+
+  // Remove edit mode class
+  editingMessageElement.classList.remove('edit-mode');
+
+  // Reset textarea value to original text
+  const textDiv = editingMessageElement.querySelector('.msg-card-text');
+  if (textarea && textDiv) {
+    textarea.value = textDiv.textContent;
+    textarea.style.height = 'auto';
+  }
+
+  // Re-enable prompt input
+  const promptInput = document.querySelector('.prompt-input');
+  if (promptInput) {
+    promptInput.disabled = false;
+  }
+
+  // Re-enable all revert buttons
+  document.querySelectorAll('.user-message').forEach(msg => {
+    msg.classList.remove('edit-mode-active');
+  });
+
+  // Remove click outside listener
+  document.removeEventListener('click', handleOutsideClick);
+
+  editingMessageElement = null;
   pendingRevertMessageId = null;
-  pendingRevertMessageText = '';
+}
+
+/** Handle clicks outside the editing card to close edit mode. */
+function handleOutsideClick(event) {
+  if (!editingMessageElement) return;
+
+  // Check if click is outside the editing message element
+  if (!editingMessageElement.contains(event.target)) {
+    closeEditMode();
+  }
 }
 
 /**
@@ -77,13 +145,21 @@ async function reloadMessagesAfterRevert() {
   }
 }
 
-/** Execute the revert operation. */
-async function executeRevert() {
-  if (!pendingRevertMessageId || !window.App.currentSession) return;
+/** Execute the revert operation from inline edit mode. */
+async function executeInlineRevert(messageId, messageElement) {
+  if (!messageId || !window.App.currentSession) return;
 
-  const t0 = performance.now();
-  const revertBtn = document.getElementById('rmRevert');
-  if (revertBtn) revertBtn.disabled = true;
+  // Get the edited text from textarea
+  const textarea = messageElement.querySelector('.msg-edit-textarea');
+  const editedText = textarea ? textarea.value : null;
+
+  if (!editedText || editedText.trim() === '') {
+    closeEditMode();
+    return;
+  }
+
+  const sendBtn = messageElement.querySelector('.msg-send-btn');
+  if (sendBtn) sendBtn.disabled = true;
 
   try {
     // 1. If a generation is in-flight, abort it and wait for the session
@@ -98,7 +174,7 @@ async function executeRevert() {
     }
 
     // 2. Call the revert API.
-    await window.electronAPI.session.revert(window.App.currentSession, pendingRevertMessageId);
+    await window.electronAPI.session.revert(window.App.currentSession, messageId);
 
     // 3. Reset every piece of UI/SSE state that could otherwise stay
     //    stuck from the pre-revert generation (stop button, cursor,
@@ -110,43 +186,46 @@ async function executeRevert() {
     //    parts like reasoning/tool bubbles that the API returns).
     await reloadMessagesAfterRevert();
 
-    // 5. Put the reverted user message text back in the input box.
+    // 5. Send the edited message immediately (don't put in input box)
     const promptInput = document.querySelector('.prompt-input');
     if (promptInput) {
-      promptInput.value = pendingRevertMessageText;
-      promptInput.focus();
+      promptInput.value = editedText;
+      // Automatically send the message
+      window.Chat.sendMessage();
     }
 
-    closeRevertModal();
+    // Close edit mode for the specific element
+    editingMessageElement = messageElement;
+    closeEditMode();
   } catch (error) {
-    console.error(`[UI] Revert FAILED in ${(performance.now() - t0).toFixed(0)}ms:`, error);
+    console.error(`[UI] Revert FAILED:`, error);
     // Surface the error to the user instead of swallowing it.
     if (window.Chat && window.Chat.showError) {
       window.Chat.showError('Revert failed: ' + (error.message || error));
     }
-    closeRevertModal();
+    editingMessageElement = messageElement;
+    closeEditMode();
   } finally {
-    if (revertBtn) revertBtn.disabled = false;
+    if (sendBtn) sendBtn.disabled = false;
   }
 }
 
-/** Initialize revert modal event listeners. */
-function initRevertModal() {
-  const cancelBtn = document.getElementById('rmCancel');
-  const revertBtn = document.getElementById('rmRevert');
-
-  if (cancelBtn) cancelBtn.addEventListener('click', closeRevertModal);
-  if (revertBtn) revertBtn.addEventListener('click', executeRevert);
-
+/** Initialize inline revert event listeners. */
+function initInlineRevert() {
   // Close on Escape key
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      const modal = document.getElementById('revertModal');
-      if (modal && !modal.classList.contains('hidden')) {
-        closeRevertModal();
-      }
+    if (e.key === 'Escape' && editingMessageElement) {
+      closeEditMode();
     }
   });
 }
 
-window.Modals = { ...(window.Modals || {}), showRevertModal, closeRevertModal, initRevertModal };
+window.Revert = {
+  startEditMode,
+  closeEditMode,
+  executeInlineRevert,
+  initInlineRevert
+};
+
+// Keep backward compatibility for Modals namespace if needed
+window.Modals = { ...(window.Modals || {}), initRevertModal: initInlineRevert };

@@ -15,7 +15,7 @@ function debounce(func, wait) {
 document.addEventListener('DOMContentLoaded', () => {
   window.SSE.initSSE();
   window.Modals.initQuestionModal();
-  window.Modals.initRevertModal();
+  window.Revert.initInlineRevert();
 
   window.electronAPI.onProjectReady(async (data) => {
     const sidebarStatusEl = Utils.$('sidebarStatus');
