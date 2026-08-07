@@ -518,8 +518,10 @@
     var item = entry.el;
     item.classList.remove("pending", "running");
     item.classList.add(ok ? "ok" : "fail");
+    // No status dot on finished tools: the spinning ring only exists while
+    // the tool is pending/running, then it disappears.
     var ring = item.querySelector(".cot-ring");
-    if (ring) ring.className = "cot-dot";
+    if (ring) ring.remove();
 
     var state = part.state || {};
     var fallback = inputSubtitle(part.tool, state.input) || "";
@@ -623,7 +625,7 @@
       toolLine.el.className = "cot-subtask-tool " + (state.status === "completed" ? "done" : state.status === "error" ? "fail" : "active");
       var dotEl = toolLine.el.querySelector(".cot-ring");
       if (state.status === "completed" || state.status === "error") {
-        if (dotEl) dotEl.className = "cot-dot";
+        if (dotEl) dotEl.remove();
       }
       toolLine.subEl.textContent =
         state.title || state.error || inputSubtitle(part.tool, state.input) || "";
@@ -693,8 +695,8 @@
       container.querySelectorAll(".cot-subtask.active, .cot-subtask-tool.active").forEach(function (el) {
         el.classList.remove("active");
         el.classList.add("done");
-        var dot = el.querySelector(".cot-dot");
-        if (dot) dot.className = "cot-dot";
+        var ring = el.querySelector(".cot-ring");
+        if (ring) ring.remove();
       });
       delete childSessions[sessionID];
       delete childParts[sessionID];

@@ -154,8 +154,6 @@
 .chat-area .cot-item.tool.pending .cot-icon { opacity: 0.5; }
 .chat-area .cot-item.tool.pending .cot-title { color: var(--text-muted); }
 
-.chat-area .cot-item.tool.ok .cot-dot { background: var(--color-success); }
-.chat-area .cot-item.tool.fail .cot-dot { background: var(--color-danger); }
 .chat-area .cot-item.tool.fail .cot-title { color: var(--color-danger); }
 
 /* Placeholder (empty stretches) */

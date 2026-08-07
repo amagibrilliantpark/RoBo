@@ -1,6 +1,81 @@
 /* ── Main ── */
 .main { margin-left: 340px; margin-right: 270px; width: calc(100vw - 340px - 270px); height: 100vh; display: flex; flex-direction: column; position: relative; }
 
+/* ── Scroll dots: sit in the empty strip between the sidebar line and the
+   content text (sidebar edge 340px, chat text starts 36px later) — centered
+   on the boundary's middle height. Middle dot fully visible, outer dots
+   dimmed. */
+.scroll-dots {
+  position: fixed;
+  left: calc(340px + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  z-index: 20;
+  pointer-events: auto;
+}
+.scroll-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  opacity: 0.45;
+}
+.scroll-dots .dot.mid {
+  background: var(--accent-color);
+  opacity: 1;
+}
+
+/* ── Jump modal: hover the dots to list the session's user messages;
+   clicking one jumps straight to it. */
+.jump-modal {
+  position: fixed;
+  left: calc(340px + 26px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 340px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 34px var(--shadow-color), 0 4px 10px var(--shadow-color);
+  z-index: 40;
+  overflow: hidden;
+}
+body[data-theme="dark"] .jump-modal { background: #16202e; }
+.jump-modal.hidden { display: none; }
+.jump-modal-list {
+  overflow-y: auto;
+  padding: 8px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.jump-modal-list::-webkit-scrollbar { width: 4px; }
+.jump-modal-list::-webkit-scrollbar-track { background: transparent; }
+.jump-modal-list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+.jump-modal-list::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+.jump-item {
+  display: block;
+  width: 100%; text-align: left;
+  padding: 12px 14px; border: none; border-radius: 9px;
+  background: transparent; cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.15s;
+}
+.jump-item:hover { background: var(--accent-hover); }
+.jump-label {
+  display: block;
+  font-size: 13.5px; font-weight: 500; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.jump-empty {
+  padding: 16px 14px; font-size: 13px; color: var(--text-muted);
+}
+
 /* ── Chat ── */
 .chat-area {
   flex: 1; overflow-y: auto; padding: 28px 36px 10px 36px;
