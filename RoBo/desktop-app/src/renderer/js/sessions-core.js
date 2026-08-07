@@ -120,7 +120,7 @@ async function selectSession(sessionId) {
       const todos = todoResponse.value || todoResponse || [];
       window.RightPanel.updateTodoList(todos);
     } catch (error) {
-      console.warn(`[Session] Todo load failed:`, error.message);
+      if (!window.App.debug) console.warn(`[Session] Todo load failed:`, error.message);
       if (window.App.currentSession === sessionId) {
         window.RightPanel.clearTodoList();
       }
@@ -137,7 +137,7 @@ async function selectSession(sessionId) {
         window.RightPanel.updateContextStats(tokenData);
       }
     } catch (error) {
-      console.warn(`[Session] Messages load failed:`, error.message);
+      if (!window.App.debug) console.warn(`[Session] Messages load failed:`, error.message);
     }
 
     // 5. Sync the model dropdown with the session's stored model so a
@@ -151,7 +151,7 @@ async function selectSession(sessionId) {
         window.Providers.selectModelFromBackend(m.providerID, m.modelID);
       }
     } catch (error) {
-      console.warn(`[Session] Session info load failed:`, error.message);
+      if (!window.App.debug) console.warn(`[Session] Session info load failed:`, error.message);
     }
   } finally {
     _switchingSession = false;
@@ -181,6 +181,9 @@ async function deleteSession(sessionId) {
       window.Chat.hideAllStatusIndicators();
       Utils.$("emptyState").classList.add("active");
       const chatArea = Utils.$("chatArea");
+      if (window.Chain && typeof window.Chain.reset === "function") {
+        window.Chain.reset();
+      }
       chatArea.querySelectorAll(".message, .streaming-cursor").forEach((m) => m.remove());
       window.RightPanel.updateSessionName("New Chat");
       window.RightPanel.clearTodoList();

@@ -32,7 +32,7 @@
   transition: background 0.15s;
   user-select: none;
 }
-.chat-area .cot-head:hover { background: var(--accent-hover); }
+.chat-area .cot-item.reasoning .cot-head:hover { background: var(--accent-hover); }
 
 .chat-area .cot-dot {
   width: 9px; height: 9px; border-radius: 50%;
@@ -118,16 +118,38 @@
   50% { opacity: 0; }
 }
 
-/* Tool cards: icon + tool name + one-line title only. */
+/* Tool cards: icon + tool name + one-line title only. The tool name is
+   plain bold lowercase text — no chip/box background. */
 .chat-area .cot-tool-name {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10.5px; font-weight: 600;
+  font-size: 11px; font-weight: 800;
   color: var(--text-secondary);
-  background: var(--accent-hover);
-  padding: 1px 6px; border-radius: 4px;
   flex-shrink: 0;
   text-transform: lowercase;
+  letter-spacing: 0.01em;
 }
+
+/* Bash tool output streams right below the card — terminal block. */
+.chat-area .cot-tool-output {
+  display: none;
+  margin: 2px 6px 2px 33px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; line-height: 1.55;
+  color: var(--text-secondary);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 220px; overflow-y: auto;
+}
+.chat-area .cot-tool-output.has-output { display: block; }
+
+.chat-area .cot-tool-output::-webkit-scrollbar { width: 4px; }
+.chat-area .cot-tool-output::-webkit-scrollbar-track { background: transparent; }
+.chat-area .cot-tool-output::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb); border-radius: 3px;
+}
+.chat-area .cot-tool-output::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
 
 .chat-area .cot-item.tool.pending .cot-icon { opacity: 0.5; }
 .chat-area .cot-item.tool.pending .cot-title { color: var(--text-muted); }

@@ -52,7 +52,8 @@ function handlePartUpdate(properties) {
 
 /** Handle streaming text deltas - route by part ID: reasoning deltas go to
  *  the Chain (text and reasoning share the field name "text"), everything
- *  else appends to the current message. */
+ *  else appends to the current message. Tool output ("output" field) goes
+ *  to the bash card. */
 function handlePartDelta(properties) {
   if (!properties || isCompacting) return;
   const { field, delta, sessionID, partID } = properties;
@@ -67,6 +68,10 @@ function handlePartDelta(properties) {
         window.Chain.hidePlaceholder();
       }
       window.Chat.appendStreamingText(delta);
+    }
+  } else if (field === "output" && delta) {
+    if (partID && window.Chain && window.Chain.appendToolOutputDelta) {
+      window.Chain.appendToolOutputDelta(partID, delta);
     }
   }
 }
@@ -640,6 +645,9 @@ function handleSessionDeleted(properties) {
     const chatArea = document.getElementById("chatArea");
     const emptyState = document.getElementById("emptyState");
     if (chatArea) {
+      if (window.Chain && typeof window.Chain.reset === "function") {
+        window.Chain.reset();
+      }
       chatArea
         .querySelectorAll(".message, .streaming-cursor")
         .forEach((m) => m.remove());

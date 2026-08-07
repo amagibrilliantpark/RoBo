@@ -47,8 +47,19 @@
   var childSessions = {};  // childSessionID -> task partID
   var childParts = {};     // childSessionID -> { partID -> { el } }
   var placeholderEl = null;
+  // A reasoning part is announced (empty) while the thinking placeholder is
+  // up. We do NOT morph yet — the placeholder keeps bouncing until the
+  // FIRST text delta arrives, so the thinking row can never sit empty.
+  var pendingReasoning = null;
   var turnAnchor = null;   // last chain element of the current turn (or its user msg)
   var turnUserMsg = null;  // current turn's user message element
+
+  function log() {
+    if (!window.App || !window.App.debug) return;
+    var args = ["[Chain]"];
+    for (var i = 0; i < arguments.length; i++) args.push(arguments[i]);
+    console.log.apply(console, args);
+  }
 
   function chatArea() {
     return document.getElementById("chatArea");
@@ -201,6 +212,7 @@
     childSessions = {};
     childParts = {};
     placeholderEl = null;
+    pendingReasoning = null;
     return turnUserMsg;
   }
 
@@ -214,25 +226,28 @@
       '<span class="cot-dot"></span><span class="cot-placeholder-label">' + esc(text || "Thinking") +
       '</span><span class="cot-placeholder-dots"><i></i><i></i><i></i></span>';
     insertFlow(placeholderEl);
+    log("placeholder shown:", text || "Thinking");
   }
 
   function hidePlaceholder() {
     if (placeholderEl) {
       placeholderEl.remove();
       placeholderEl = null;
+      log("placeholder hidden");
     }
+    pendingReasoning = null;
   }
 
   /* ── Reasoning parts ── */
 
-  function buildReasoningHead() {
+  function buildReasoningHead(keepThinkingLabel) {
     var head = document.createElement("div");
     head.className = "cot-head";
     var dot = document.createElement("span");
     dot.className = "cot-dot";
     var title = document.createElement("span");
     title.className = "cot-title";
-    title.textContent = "Reasoning";
+    title.textContent = keepThinkingLabel ? "Thinking" : "Reasoning";
     var cursor = document.createElement("span");
     cursor.className = "stream-cursor";
     head.appendChild(dot);
@@ -258,15 +273,19 @@
 
   /** The "Thinking..." placeholder BECOMES the reasoning row: same element,
    *  same position — the reasoning just streams in below the thinking
-   *  label. No row swap, no animation restart, no dead gap. */
+   *  label. No row swap, no animation restart, no dead gap. The morph is
+   *  DEFERRED: it fires on the first text delta, not when the (still
+   *  empty) reasoning part is announced, so the placeholder keeps bouncing
+   *  until real text exists. */
   function morphPlaceholderToReasoning(part) {
     var el = placeholderEl;
     placeholderEl = null;
+    pendingReasoning = null;
     el.classList.remove("cot-placeholder");
     el.classList.add("cot-item", "reasoning", "active", "no-anim");
     el.dataset.partId = part.id;
     el.textContent = "";
-    el.appendChild(buildReasoningHead());
+    el.appendChild(buildReasoningHead(true));
     var body = document.createElement("div");
     body.className = "cot-body";
     var textEl = document.createElement("div");
@@ -280,6 +299,7 @@
       rendered: part.text ? part.text.length : 0
     };
     items[part.id] = entry;
+    log("placeholder morphed to reasoning:", part.id);
     return entry;
   }
 
@@ -315,6 +335,14 @@
       if (part.time && part.time.end) finalizeReasoning(existing, part);
       return;
     }
+    if (placeholderEl && !part.text) {
+      // Part announced but still empty (including an empty finalize): keep
+      // the placeholder bouncing — the morph happens on the first delta,
+      // so a content-free reasoning part can never leave an empty row.
+      pendingReasoning = part.id;
+      log("reasoning part (empty) -> pending morph:", part.id);
+      return;
+    }
     var entry;
     if (placeholderEl) {
       entry = morphPlaceholderToReasoning(part);
@@ -340,16 +368,23 @@
   }
 
   function isReasoningPart(partID) {
+    if (partID === pendingReasoning) return true;
     return !!(items[partID] && items[partID].type === "reasoning");
   }
 
   /** Streaming deltas append plain text only — code chips are rendered
    *  once at finalize (time.end). Per-token cost stays O(chunk); the old
    *  backtick-triggered full re-render was O(buffer) on nearly every delta
-   *  (reasoning is full of `code` tokens). */
+   *  (reasoning is full of `code` tokens). The FIRST delta of a pending
+   *  part triggers the deferred placeholder morph — text exists now, so
+   *  the thinking row becomes the reasoning row without any empty gap. */
   function appendReasoningDelta(partID, delta) {
+    if (!delta) return;
     var entry = items[partID];
-    if (!entry || entry.type !== "reasoning" || !delta) return;
+    if (!entry && partID === pendingReasoning && placeholderEl) {
+      entry = morphPlaceholderToReasoning({ id: partID });
+    }
+    if (!entry || entry.type !== "reasoning") return;
     entry.buf += delta;
     if (!entry.textEl) return;
     var chunk = entry.buf.slice(entry.rendered || 0);
@@ -375,9 +410,10 @@
   }
 
   /* ── Tool parts ──
-   * Compact cards only: icon + tool name + one-line title. No output
-   * blocks, no expandable bodies — the command/path already shows in the
-   * title line, so a second block below the card is pure noise. */
+   * Compact cards: icon + tool name + one-line title. Bash is the one
+   * exception — its terminal output streams right below the card. */
+
+  var BASH_OUTPUT_CAP = 4000;
 
   function makeToolRow(part) {
     var item = document.createElement("div");
@@ -400,7 +436,13 @@
     head.appendChild(name);
     head.appendChild(title);
     item.appendChild(head);
-    return { el: item, titleEl: title };
+    var outputEl = null;
+    if (part.tool === "bash") {
+      outputEl = document.createElement("div");
+      outputEl.className = "cot-tool-output";
+      item.appendChild(outputEl);
+    }
+    return { el: item, titleEl: title, outputEl: outputEl };
   }
 
   function applyToolState(entry, part) {
@@ -420,6 +462,19 @@
     }
   }
 
+  /** Bash output arrives in the completed/error state (and can also be
+   *  streamed via deltas — see appendToolOutputDelta). */
+  function renderToolOutput(entry, part) {
+    if (!entry.outputEl) return;
+    var out = (part.state && part.state.output) || part.output || "";
+    if (!out) return;
+    if (out.length > BASH_OUTPUT_CAP) {
+      out = out.slice(0, BASH_OUTPUT_CAP) + "\n\u2026 (output truncated)";
+    }
+    entry.outputEl.textContent = out;
+    entry.outputEl.classList.add("has-output");
+  }
+
   function upsertTool(part) {
     if (!part || !part.id) return;
     var existing = items[part.id];
@@ -428,9 +483,10 @@
       insertTool(built.el);
       existing = {
         el: built.el, type: "tool", state: part.state || {},
-        titleEl: built.titleEl, childrenEl: null
+        titleEl: built.titleEl, outputEl: built.outputEl, childrenEl: null
       };
       items[part.id] = existing;
+      log("tool row:", part.tool, part.state && part.state.status);
     }
     applyToolState(existing, part);
   }
@@ -461,6 +517,7 @@
       : (state.error || state.title || fallback);
 
     registerChild(entry, part);
+    renderToolOutput(entry, part);
     var meta = state.metadata || {};
     if (part.tool === "task" && meta.sessionId && !ok) {
       var doneLine = document.createElement("div");
@@ -468,6 +525,29 @@
       doneLine.innerHTML = '<span class="cot-dot"></span><span class="cot-subtask-desc">Subagent failed</span>';
       entry.childrenEl.appendChild(doneLine);
     }
+  }
+
+  /** Stream bash output deltas into the card (opencode emits tool output
+   *  as message.part.delta with field "output" while the command runs).
+   *  Appends incrementally like reasoning — no full-buffer rewrite per
+   *  chunk. */
+  function appendToolOutputDelta(partID, delta) {
+    if (!delta) return;
+    var entry = items[partID];
+    if (!entry || entry.type !== "tool" || !entry.outputEl) return;
+    if (entry.outputEl.classList.contains("has-output")) return;
+    var rendered = entry.outRendered || 0;
+    var cap = BASH_OUTPUT_CAP;
+    var out = (entry.outputBuf = (entry.outputBuf || "") + delta);
+    if (out.length > cap) {
+      entry.outputEl.appendChild(document.createTextNode(out.slice(rendered, cap)));
+      entry.outputEl.appendChild(document.createTextNode("\n\u2026 (output truncated)"));
+      entry.outputEl.classList.add("has-output");
+      entry.outRendered = cap;
+      return;
+    }
+    entry.outputEl.appendChild(document.createTextNode(out.slice(rendered)));
+    entry.outRendered = out.length;
   }
 
   /* ── Child session (task tool subagent) content ── */
@@ -644,6 +724,7 @@
       entry.el.remove();
       delete items[partID];
     }
+    if (pendingReasoning === partID) pendingReasoning = null;
     for (var sid in childSessions) {
       if (childSessions[sid] === partID) {
         delete childSessions[sid];
@@ -666,6 +747,7 @@
     childSessions = {};
     childParts = {};
     placeholderEl = null;
+    pendingReasoning = null;
     turnAnchor = null;
     turnUserMsg = null;
   }
@@ -686,6 +768,7 @@
   function beginRebuild() {
     clearChainDom();
     resetRegistries();
+    log("rebuild started");
   }
 
   function rebuildPart(part, parent) {
@@ -708,7 +791,7 @@
       var t = makeToolRow(part);
       var toolEntry = {
         el: t.el, type: "tool", state: part.state || {},
-        titleEl: t.titleEl, childrenEl: null
+        titleEl: t.titleEl, outputEl: t.outputEl, childrenEl: null
       };
       items[part.id] = toolEntry;
       applyToolState(toolEntry, part);
@@ -722,6 +805,8 @@
     turnUserMsg = users.length ? users[users.length - 1] : null;
     turnAnchor = turnUserMsg || null;
     placeholderEl = null;
+    pendingReasoning = null;
+    log("rebuild done; rows:", Object.keys(items).length);
   }
 
   function isChildSession(sessionID) {
@@ -733,6 +818,7 @@
     isReasoningPart: isReasoningPart,
     appendReasoningDelta: appendReasoningDelta,
     upsertTool: upsertTool,
+    appendToolOutputDelta: appendToolOutputDelta,
     attachChildPart: attachChildPart,
     appendChildPartDelta: appendChildPartDelta,
     removeChildPart: removeChildPart,

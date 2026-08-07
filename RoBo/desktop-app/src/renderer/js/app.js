@@ -44,6 +44,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Startup status monitor ──
+  // Silenced in dev mode: dev mode reserves the console for the [Chain]
+  // logger, and this warning only fires when startup is actually stuck.
   let _statusCheckCount = 0;
   const _statusMonitor = setInterval(() => {
     const statusEl = Utils.$('sidebarStatus');
@@ -51,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentText = statusEl.textContent;
     _statusCheckCount++;
     // If stuck at "Starting..." for more than 15 seconds, log warning
-    if (_statusCheckCount > 30 && currentText.includes('Starting')) {
+    if (!window.App.debug && _statusCheckCount > 30 && currentText.includes('Starting')) {
       console.warn(`[Init] ⚠️ Stuck at "Starting..." for ${(_statusCheckCount * 500 / 1000).toFixed(0)}s`);
       // Check instance status
       window.electronAPI.instance.status().then(status => {
@@ -65,6 +67,14 @@ document.addEventListener('DOMContentLoaded', () => {
       clearInterval(_statusMonitor);
     }
   }, 500);
+
+  // ── Dev mode toggle (Ctrl+Shift+D): enables the [Chain] logger ──
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+      window.App.debug = !window.App.debug;
+      console.log(`[Dev] Dev mode ${window.App.debug ? 'ON' : 'OFF'} — [Chain] logs ${window.App.debug ? 'enabled' : 'disabled'}`);
+    }
+  });
 
   // ── Sidebar toggle ──
   const sidebar = Utils.$('sidebar');
@@ -202,6 +212,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.session-card').forEach(c => c.classList.remove('active'));
     const chatArea = Utils.$('chatArea');
     const emptyState = Utils.$('emptyState');
+    // Drop the previous session's chain rows too — otherwise the old
+    // reasoning/tool cards keep floating in the fresh "New Chat" view.
+    if (window.Chain && typeof window.Chain.reset === 'function') {
+      window.Chain.reset();
+    }
     chatArea.querySelectorAll('.message, .streaming-cursor').forEach(m => m.remove());
     emptyState.classList.add('active');
     window.RightPanel.updateSessionName('New Chat');

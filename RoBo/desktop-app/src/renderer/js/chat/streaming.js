@@ -8,9 +8,10 @@ let streamingRenderThreshold = 0; // Minimum chars before we force a full re-ren
 
 /** Append a chunk of streamed text and schedule a render pass. */
 function appendStreamingText(text) {
-  // Guard against duplicate chunks
+  // Guard against duplicate chunks (silenced in dev mode: dev mode keeps
+  // the console for the [Chain] logger)
   if (text === lastStreamingChunk && text.length > 10) {
-    console.warn(`[Perf] Streaming: duplicate chunk detected, skipping (${text.length} chars)`);
+    if (!window.App.debug) console.warn(`[Perf] Streaming: duplicate chunk detected, skipping (${text.length} chars)`);
     return;
   }
   lastStreamingChunk = text;
