@@ -14,40 +14,60 @@ function handlePartUpdate(properties) {
   }
 
   if (part.type === "reasoning") {
-    window.Chat.showThinking("Reasoning...");
+    window.Chain.upsertReasoning(part);
   } else if (part.type === "step-start") {
+    window.Chain.showPlaceholder("Thinking");
     window.Chat.resetStreamingAccum();
-    window.Chat.showThinking("Thinking...");
   } else if (part.type === "text") {
     if (part.id !== activeTextPartID) {
       window.Chat.resetStreamingAccum();
     }
     activeTextPartID = part.id;
+    // Only drop the placeholder when real content has arrived. The text
+    // part is created empty BEFORE the model streams anything — hiding
+    // the placeholder here leaves a dead gap until reasoning/text start.
+    if (part.text && window.Chain && window.Chain.hidePlaceholder) {
+      window.Chain.hidePlaceholder();
+    }
   } else if (part.type === "step-finish") {
     activeTextPartID = null;
     window.Chat.removeStreamingCursor();
   } else if (part.type === "tool") {
-    const toolName = part.tool || "tool";
-    if (window.App.isProcessing) {
-      window.Chat.showThinking("Using " + toolName + "...");
-    }
+    window.Chain.upsertTool(part);
     if (part.tool === "todowrite" && part.state && part.state.input) {
       const todos = part.state.input.todos;
       if (Array.isArray(todos)) {
         window.RightPanel.updateTodoList(todos);
       }
     }
+  } else if (part.type === "retry") {
+    const attempt = part.attempt || 0;
+    const errMsg =
+      (part.error && (part.error.message || part.error.detail)) || "retrying";
+    window.Chain.addMarker("retry", `Retry ${attempt} \u2014 ${errMsg}`);
+  } else if (part.type === "compaction") {
+    window.Chain.addMarker("compaction", "Context compacted \u2014 continuing");
   }
 }
 
-/** Handle streaming text deltas â€” append to the current message. */
+/** Handle streaming text deltas - route by part ID: reasoning deltas go to
+ *  the Chain (text and reasoning share the field name "text"), everything
+ *  else appends to the current message. */
 function handlePartDelta(properties) {
   if (!properties || isCompacting) return;
   const { field, delta, sessionID, partID } = properties;
   if (sessionID !== window.App.currentSession) return;
 
-  if (field === "text" && delta && partID === activeTextPartID) {
-    window.Chat.appendStreamingText(delta);
+  if (field === "text" && delta) {
+    if (partID && window.Chain && window.Chain.isReasoningPart(partID)) {
+      window.Chain.appendReasoningDelta(partID, delta);
+    } else if (partID === activeTextPartID) {
+      // Real text is flowing now — the placeholder's job is done.
+      if (window.Chain && window.Chain.hidePlaceholder) {
+        window.Chain.hidePlaceholder();
+      }
+      window.Chat.appendStreamingText(delta);
+    }
   }
 }
 
@@ -65,17 +85,28 @@ function handleMessageUpdated(properties) {
     // in the chat so the empty tail doesn't look like a successful response.
     if (window.App.abortedByUser) {
       window.App.abortedByUser = false;
-      if (window.Chat && window.Chat.showUsageExceed) {
-        window.Chat.showUsageExceed("Generation stopped by user");
+      window.App.sessionBusy = false;
+      if (window.Chain && window.Chain.addMarker) {
+        window.Chain.addMarker("stop", "Generation stopped by user");
       }
     }
     window.Chat.finalizeStreaming();
-    // If the trailing message is the *assistant*'s completed one, the
-    // generation is effectively over even if the session.idle event
-    // doesn't arrive for any reason. Drop out of stop-mode so the UI
-    // doesn't stay frozen on the Stop button.
+    // One message completing is NOT the end of the generation: opencode
+    // completes the assistant message at every step boundary (e.g. after
+    // each tool round). Dropping stop-mode here would flip the button to
+    // "send" between steps, then back to "stop" when the next step's
+    // first part lands. Only when the session is no longer busy (idle /
+    // error / abort) may the send button return.
+    // Exception: a question tool can end the model's turn while the
+    // session stays busy waiting for the answer — that completion must
+    // NOT drop the stop button (the generation continues after respond).
+    if (window.App.questionPending) return;
     const role = (info && info.role) || (properties.role);
-    if (!role || role === "assistant") {
+    if ((!role || role === "assistant") && !window.App.sessionBusy) {
+      // The message is done: no more deltas should attach to it. Null the
+      // active part id so a straggler delta can't append into the
+      // finalized bubble.
+      activeTextPartID = null;
       if (window.Chat && window.Chat.setStopMode) {
         window.Chat.setStopMode(false);
       }
@@ -109,6 +140,7 @@ function handleSessionStatus(properties) {
   // handled in handleSessionCompacted() below.
   if (status === "busy") {
     isCompacting = false;
+    window.App.sessionBusy = true;
     if (
       statusEl.textContent === "Ready" ||
       statusEl.textContent.startsWith("Ready")
@@ -116,10 +148,11 @@ function handleSessionStatus(properties) {
       statusEl.textContent = "Processing...";
     }
   } else if (status === "retry") {
+    window.App.sessionBusy = true;
     const attempt = (statusObj && statusObj.attempt) || 0;
     const retryMsg = (statusObj && statusObj.message) || "Retrying...";
-    statusEl.textContent = `Retry ${attempt} â€” ${retryMsg}`;
-    window.Chat.showThinking(`Retrying (${attempt})...`);
+    statusEl.textContent = `Retry ${attempt} \u2014 ${retryMsg}`;
+    window.Chain.addMarker("retry", `Retry ${attempt} \u2014 ${retryMsg}`);
   } else if (status === "idle") {
     // `session.status` with type "idle" is emitted by OpenCode whenever a
     // generation finishes (including abort/error paths). The dedicated
@@ -138,11 +171,14 @@ function handleSessionCompacted(properties) {
   if (eventSession && eventSession !== window.App.currentSession) return;
 
   isCompacting = false;
-  window.Chat.showCompacted();
+  window.Chain.finishMarker("compaction", "Context compacted \u2014 continuing");
 
   const sessionToRefresh = window.App.currentSession;
-  if (sessionToRefresh) {
-    setTimeout(() => {
+  if (!sessionToRefresh) return;
+  // A full rebuild would wipe the in-flight streaming bubble mid-turn —
+  // skip it while the model is still replying; deltas continue the bubble.
+  if (document.querySelector(".ai-message-streaming")) return;
+  setTimeout(() => {
       if (window.App.currentSession !== sessionToRefresh) return;
       window.electronAPI.session
         .messages(sessionToRefresh)
@@ -152,15 +188,12 @@ function handleSessionCompacted(properties) {
         })
         .catch(() => {});
     }, 100);
-  }
 }
 
 /** OpenCode 1.17+ new compaction API: a compaction round has started. */
 function handleNextCompactionStarted(properties) {
   isCompacting = true;
-  if (window.Chat && window.Chat.showCompaction) {
-    window.Chat.showCompaction("Compacting context...");
-  }
+  window.Chain.addMarker("compaction-active", "Compacting context...");
   // Pause streaming so the in-flight assistant bubble doesn't fight
   // with the compaction summary.
   if (window.SSE && typeof window.SSE.setCompacting === "function") {
@@ -186,10 +219,12 @@ function handleNextCompactionEnded(properties) {
   if (window.SSE && typeof window.SSE.setCompacting === "function") {
     window.SSE.setCompacting(false);
   }
-  window.Chat.showCompacted();
+  window.Chain.finishMarker("compaction", "Context compacted \u2014 continuing");
 
   const sessionToRefresh = window.App.currentSession;
   if (!sessionToRefresh) return;
+  // Same live-stream guard as handleSessionCompacted.
+  if (document.querySelector(".ai-message-streaming")) return;
   setTimeout(() => {
     if (window.App.currentSession !== sessionToRefresh) return;
     window.electronAPI.session
@@ -216,17 +251,23 @@ function handleNextRevertEvent(data) {
   } else if (t === "session.next.revert.committed") {
     window.App.lastRevert = null;
   }
-  // Trigger a re-fetch of the session so any revert-bound messages
-  // appear/disappear from the chat.
-  const sessionToRefresh = window.App.currentSession;
-  if (!sessionToRefresh) return;
-  window.electronAPI.session
-    .messages(sessionToRefresh)
-    .then((messages) => {
-      if (window.App.currentSession !== sessionToRefresh) return;
-      window.Chat.renderMessages(messages);
-    })
-    .catch(() => {});
+  // staged -> cleared -> committed arrive back-to-back; collapse the three
+  // full-history rebuilds into a single trailing refresh.
+  if (window.App.revertRefreshTimer) clearTimeout(window.App.revertRefreshTimer);
+  window.App.revertRefreshTimer = setTimeout(() => {
+    window.App.revertRefreshTimer = null;
+    // Trigger a re-fetch of the session so any revert-bound messages
+    // appear/disappear from the chat.
+    const sessionToRefresh = window.App.currentSession;
+    if (!sessionToRefresh) return;
+    window.electronAPI.session
+      .messages(sessionToRefresh)
+      .then((messages) => {
+        if (window.App.currentSession !== sessionToRefresh) return;
+        window.Chat.renderMessages(messages);
+      })
+      .catch(() => {});
+  }, 150);
 }
 
 /** OpenCode 1.17+ new question API. Re-shape v2 payload and re-use the
@@ -277,6 +318,9 @@ function handleMessagePartRemoved(properties) {
   if (!properties) return;
   const partID = properties.partID || properties.id;
   if (!partID) return;
+  if (window.Chain && window.Chain.removePart) {
+    window.Chain.removePart(partID);
+  }
   const container = Utils.$("chatArea");
   if (!container) return;
   // Any element tagged with data-part-id matching the removed part is
@@ -297,6 +341,13 @@ function handleMessagePartRemoved(properties) {
 function handleSessionIdle(properties) {
   if (isCompacting) return;
 
+  // opencode emits BOTH session.status(idle) and session.idle in the same
+  // tick. The second call would re-fetch the whole history and re-run the
+  // DOM diff pass again — dedupe anything within a short window.
+  if (window.App.lastIdleAt && Date.now() - window.App.lastIdleAt < 250) return;
+  window.App.lastIdleAt = Date.now();
+
+  window.App.sessionBusy = false;
   if (properties && window.App.currentSession) {
     const eventSession = properties.sessionID || properties.id;
     if (eventSession && eventSession !== window.App.currentSession) {
@@ -314,6 +365,9 @@ function handleSessionIdle(properties) {
   window.Chat.finalizeStreaming();
   window.Chat.setStopMode(false);
   window.Chat.hideAllStatusIndicators();
+  if (window.Chain && window.Chain.hidePlaceholder) {
+    window.Chain.hidePlaceholder();
+  }
   activeTextPartID = null;
 
   const sessionToRefresh = window.App.currentSession;
@@ -440,6 +494,7 @@ function handleSessionError(properties) {
 
   const statusEl = Utils.$("sidebarStatus");
   if (statusEl) statusEl.textContent = "Error";
+  window.App.sessionBusy = false;
   window.Chat.setStopMode(false);
   isCompacting = false;
 
@@ -447,8 +502,12 @@ function handleSessionError(properties) {
     typeof errorObj === "string"
       ? errorObj
       : errorObj.message || JSON.stringify(errorObj);
-  window.Chat.showError(errorStr);
-  window.Chat.hideThinking();
+  if (window.Chain && window.Chain.addMarker) {
+    window.Chain.addMarker("error", "Error \u2014 " + errorStr);
+  }
+  if (window.Chain && window.Chain.hidePlaceholder) {
+    window.Chain.hidePlaceholder();
+  }
 }
 
 /** Handle permission requests (currently a no-op placeholder). */

@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>State Preview</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            :root {
+                --text-primary: #18283a;
+                --text-secondary: #4a5a6a;
+                --text-muted: #7a8a9a;
+                --border-color: rgb(180, 210, 240);
+                --accent-color: #4e87bb;
+                --accent-hover: rgba(210, 230, 250, 0.50);
+                --color-success: #2e8b57;
+                --color-danger: #c0392b;
+                --dot-size: 9px;
+            }
+
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                background: #ffffff;
+            }
+
+            body {
+                font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+                font-size: 14px;
+                font-weight: 500;
+                line-height: 1.55;
+                -webkit-font-smoothing: antialiased;
+                color: var(--text-primary);
+            }
+
+            .container {
+                max-width: 640px;
+                padding: 28px 36px;
+            }
+
+            .page-title {
+                font-family: 'Cormorant Garamond', Georgia, serif;
+                font-size: 26px;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+                color: var(--text-primary);
+                margin: 0 0 22px 0;
+            }
+
+            .cot-list {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .cot-item {
+                animation: fade-in 0.4s ease both;
+            }
+
+            @keyframes fade-in {
+                from { opacity: 0; transform: translateY(3px); }
+                to { opacity: 1; transform: none; }
+            }
+
+            .cot-head {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 6px 8px;
+                border-radius: 8px;
+                cursor: default;
+                transition: background 0.15s;
+                user-select: none;
+            }
+
+            .cot-head:hover {
+                background: var(--accent-hover);
+            }
+
+            .cot-dot {
+                width: var(--dot-size);
+                height: var(--dot-size);
+                border-radius: 50%;
+                background: var(--accent-color);
+                flex-shrink: 0;
+            }
+
+            .cot-ring {
+                width: 11px;
+                height: 11px;
+                border-radius: 50%;
+                border: 2px solid var(--border-color);
+                border-top-color: var(--accent-color);
+                animation: spin 1.4s linear infinite;
+                flex-shrink: 0;
+                box-sizing: border-box;
+            }
+
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+
+            .cot-icon {
+                width: 15px;
+                height: 15px;
+                color: var(--text-secondary);
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .cot-icon svg {
+                width: 15px;
+                height: 15px;
+                stroke: currentColor;
+                fill: none;
+                stroke-width: 1.8;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            .cot-title {
+                flex: 1;
+                font-size: 13.5px;
+                font-weight: 500;
+                color: var(--text-primary);
+                min-width: 0;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .cot-toggle {
+                width: 22px;
+                height: 22px;
+                border: none;
+                background: transparent;
+                color: var(--text-muted);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                flex-shrink: 0;
+                border-radius: 6px;
+                transition: background 0.15s, color 0.15s;
+            }
+
+            .cot-toggle:hover {
+                background: var(--accent-hover);
+                color: var(--accent-color);
+            }
+
+            .cot-toggle svg {
+                width: 13px;
+                height: 13px;
+                stroke: currentColor;
+                fill: none;
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                transition: transform 0.2s;
+            }
+
+            .cot-item.collapsed .cot-toggle svg {
+                transform: rotate(180deg);
+            }
+
+            .cot-body {
+                margin-left: 12.5px;
+                padding-left: 16px;
+                border-left: 1px solid var(--border-color);
+                display: flex;
+                flex-direction: column;
+                gap: 7px;
+                padding-top: 7px;
+                padding-bottom: 2px;
+            }
+
+            .cot-item.collapsed .cot-body {
+                display: none;
+            }
+
+            .cot-text {
+                font-size: 12.5px;
+                font-weight: 400;
+                color: var(--text-secondary);
+                line-height: 1.6;
+                white-space: pre-wrap;
+                min-width: 0;
+            }
+
+            .cot-code {
+                background: var(--accent-hover);
+                padding: 1px 5px;
+                border-radius: 4px;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 11.5px;
+                font-weight: 500;
+                color: var(--text-primary);
+            }
+
+            .cot-item.reasoning.active .cot-title {
+                color: var(--accent-color);
+            }
+
+            .cot-item.reasoning.active .cot-dot {
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+
+            .cot-item.reasoning .stream-cursor {
+                display: none;
+            }
+
+            .cot-item.reasoning.active .stream-cursor {
+                display: inline-block;
+            }
+
+            .cot-item.reasoning.done .cot-title {
+                color: var(--text-primary);
+            }
+
+            .cot-item.tool.fail .cot-dot {
+                background: var(--color-danger);
+            }
+
+            .cot-tool-sub {
+                margin-left: 54px;
+                font-size: 11.5px;
+                font-weight: 400;
+                color: var(--text-muted);
+                line-height: 1.4;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                padding: 0 8px 2px 0;
+            }
+
+            .cot-item.tool.fail .cot-tool-sub {
+                color: var(--color-danger);
+            }
+
+            .cot-item.tool.ok .cot-dot {
+                background: var(--color-success);
+            }
+
+            .cot-item.tool.fail .cot-dot {
+                background: var(--color-danger);
+            }
+
+            .cot-item.tool.pending .cot-icon {
+                opacity: 0.5;
+            }
+
+            .cot-item.tool.pending .cot-title {
+                color: var(--text-muted);
+            }
+
+            .cot-tool-output {
+                margin-left: 54px;
+                margin-top: 3px;
+                margin-bottom: 4px;
+                padding: 7px 10px 7px 14px;
+                border-left: 1px solid var(--border-color);
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 11.5px;
+                font-weight: 400;
+                line-height: 1.5;
+                color: var(--text-secondary);
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+
+            .cot-tool-output.error {
+                color: var(--color-danger);
+                border-left-color: var(--color-danger);
+            }
+
+            .cot-item.tool.collapsed .cot-tool-output {
+                display: none;
+            }
+
+            .cot-placeholder {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 6px 8px;
+                font-size: 13px;
+                color: var(--text-muted);
+                animation: fade-in 0.3s ease both;
+            }
+
+            .cot-placeholder .cot-dot {
+                animation: pulse 1.2s ease-in-out infinite;
+            }
+
+            .cot-placeholder-dots {
+                display: inline-flex;
+                gap: 3px;
+                margin-left: 2px;
+            }
+
+            .cot-placeholder-dots i {
+                width: 4px;
+                height: 4px;
+                border-radius: 50%;
+                background: var(--text-muted);
+                animation: dots-bounce 1.2s infinite;
+            }
+
+            .cot-placeholder-dots i:nth-child(2) { animation-delay: 0.15s; }
+            .cot-placeholder-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+            @keyframes dots-bounce {
+                0%, 80%, 100% { opacity: 0.25; }
+                40% { opacity: 1; }
+            }
+
+            .cot-subtask {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-left: 54px;
+                padding: 4px 8px;
+                font-size: 12px;
+                color: var(--text-muted);
+                animation: fade-in 0.3s ease both;
+            }
+
+            .cot-subtask .cot-dot {
+                width: 7px;
+                height: 7px;
+            }
+
+            .cot-subtask.active .cot-dot {
+                animation: pulse 1.2s infinite;
+            }
+
+            .cot-subtask.done .cot-dot {
+                background: var(--color-success);
+            }
+
+            .cot-subtask-agent {
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 11px;
+                font-weight: 600;
+                color: var(--text-secondary);
+            }
+
+            .cot-marker {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 4px 8px;
+                font-size: 11.5px;
+                font-weight: 400;
+                color: var(--text-muted);
+                animation: fade-in 0.3s ease both;
+            }
+
+            .cot-marker-dot {
+                width: 7px;
+                height: 7px;
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+
+            .cot-marker.retry .cot-marker-dot {
+                background: var(--accent-color);
+                animation: pulse 1.2s infinite;
+            }
+
+            .cot-marker.retry .cot-marker-text {
+                color: var(--accent-color);
+            }
+
+            .cot-marker.compaction .cot-marker-dot {
+                background: var(--text-muted);
+            }
+
+            .cot-attachments {
+                margin-top: 6px;
+                padding-top: 6px;
+                border-top: 1px dashed var(--border-color);
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+            }
+
+            .cot-attachment {
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 11px;
+            }
+
+            .cot-attachment-mime {
+                color: var(--text-muted);
+                font-size: 10px;
+                margin-right: 8px;
+            }
+
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.35; }
+            }
+
+            .stream-cursor {
+                display: inline-block;
+                width: 2px;
+                height: 1.1em;
+                background: var(--accent-color);
+                margin-left: 2px;
+                vertical-align: text-bottom;
+                animation: cursor-blink 0.8s step-end infinite;
+            }
+
+            @keyframes cursor-blink {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="page-title">chain of thoughts</h1>
+            <div class="cot-list" id="cotList"></div>
+        </div>
+        <script>
+            function toggleCot(btn) {
+                var item = btn.closest('.cot-item');
+                item.classList.toggle('collapsed');
+            }
+
+            var list = document.getElementById('cotList');
+
+            var ICONS = {
+                grep: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.5" y2="16.5" /></svg>',
+                read: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>',
+                write: '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>',
+                edit: '<svg viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z" /></svg>',
+                bash: '<svg viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg>',
+                glob: '<svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>',
+                websearch: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>',
+                webfetch: '<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>',
+                todowrite: '<svg viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>',
+                task: '<svg viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2" /><path d="M12 8V4" /><circle cx="9" cy="13" r="1" /><circle cx="15" cy="13" r="1" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>',
+                question: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>',
+                skill: '<svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3z" /></svg>',
+                apply_patch: '<svg viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg>',
+                lsp: '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>',
+                execute: '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" /></svg>',
+                plan: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg>',
+                invalid: '<svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>',
+                mcp: '<svg viewBox="0 0 24 24"><path d="M12 22v-5" /><path d="M9 8V2" /><path d="M15 8V2" /><path d="M18 8v5a6 6 0 0 1-12 0V8z" /></svg>'
+            };
+            var ICON_DEFAULT = '<svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>';
+
+            var CHEVRON = '<svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15" /></svg>';
+
+            function streamText(el, text, speed, cb) {
+                var i = 0;
+                var tick = function () {
+                    if (i <= text.length) {
+                        el.textContent = text.slice(0, i);
+                        i++;
+                        setTimeout(tick, speed);
+                    } else {
+                        cb();
+                    }
+                };
+                tick();
+            }
+
+            function tokenize(text) {
+                var tokens = [];
+                var re = /`([^`]*)`/g;
+                var last = 0;
+                var m;
+                while ((m = re.exec(text))) {
+                    if (m.index > last) tokens.push({ code: false, text: text.slice(last, m.index) });
+                    tokens.push({ code: true, text: m[1] });
+                    last = re.lastIndex;
+                }
+                if (last < text.length) tokens.push({ code: false, text: text.slice(last) });
+                return tokens;
+            }
+
+            function streamRich(container, cursor, text, speed, cb) {
+                var tokens = tokenize(text);
+                var ti = 0;
+                var next = function () {
+                    if (ti >= tokens.length) {
+                        cb();
+                        return;
+                    }
+                    var t = tokens[ti];
+                    var node = document.createElement(t.code ? 'code' : 'span');
+                    if (t.code) node.className = 'cot-code';
+                    container.insertBefore(node, cursor);
+                    streamText(node, t.text, speed, function () {
+                        ti++;
+                        next();
+                    });
+                };
+                next();
+            }
+
+            function appendReasoning(text, speed, cb) {
+                var item = document.createElement('div');
+                item.className = 'cot-item reasoning active';
+                item.innerHTML =
+                    '<div class="cot-head">' +
+                        '<span class="cot-dot"></span>' +
+                        '<span class="cot-title">Reasoning<span class="stream-cursor"></span></span>' +
+                        '<button class="cot-toggle" onclick="toggleCot(this)">' + CHEVRON + '</button>' +
+                    '</div>' +
+                    '<div class="cot-body">' +
+                        '<div class="cot-text"></div>' +
+                    '</div>';
+                list.appendChild(item);
+                hidePlaceholder();
+                var textEl = item.querySelector('.cot-text');
+                var cursor = document.createElement('span');
+                cursor.className = 'stream-cursor';
+                textEl.appendChild(cursor);
+                streamRich(textEl, cursor, text, speed, function () {
+                    item.classList.remove('active');
+                    item.classList.add('done');
+                    cb();
+                });
+            }
+
+            function appendMarker(kind, text) {
+                var item = document.createElement('div');
+                item.className = 'cot-marker ' + kind;
+                item.innerHTML = '<span class="cot-marker-dot"></span><span class="cot-marker-text">' + text + '</span>';
+                list.appendChild(item);
+                hidePlaceholder();
+            }
+
+            var placeholder = null;
+
+            function showPlaceholder(text) {
+                if (placeholder) return;
+                placeholder = document.createElement('div');
+                placeholder.className = 'cot-placeholder';
+                placeholder.innerHTML = '<span class="cot-dot"></span><span>' + text + '</span><span class="cot-placeholder-dots"><i></i><i></i><i></i></span>';
+                list.appendChild(placeholder);
+            }
+
+            function hidePlaceholder() {
+                if (placeholder) {
+                    placeholder.remove();
+                    placeholder = null;
+                }
+            }
+
+            function appendTool(iconKey, name, title, ok, cb, opts) {
+                opts = opts || {};
+                var hasOutput = !!opts.output;
+                var item = document.createElement('div');
+                item.className = 'cot-item tool pending' + (hasOutput ? ' has-output' : '');
+                var outputHtml = '';
+                if (hasOutput) {
+                    outputHtml = '<div class="cot-tool-output' + (ok ? '' : ' error') + '">' + opts.output;
+                    if (opts.attachments && opts.attachments.length) {
+                        outputHtml += '<div class="cot-attachments">' + opts.attachments.map(function (a) {
+                            return '<div class="cot-attachment"><span class="cot-attachment-mime">' + a.mime + '</span><span class="cot-attachment-name">' + a.filename + '</span></div>';
+                        }).join('') + '</div>';
+                    }
+                    outputHtml += '</div>';
+                }
+                item.innerHTML =
+                    '<div class="cot-head">' +
+                        '<span class="cot-ring"></span>' +
+                        '<span class="cot-icon">' + (ICONS[iconKey] || ICON_DEFAULT) + '</span>' +
+                        '<span class="cot-title">' + name + '</span>' +
+                        (hasOutput ? '<button class="cot-toggle" onclick="toggleCot(this)">' + CHEVRON + '</button>' : '') +
+                    '</div>' +
+                    '<div class="cot-tool-sub">' + (opts.subtitle || title) + '</div>' +
+                    outputHtml;
+                list.appendChild(item);
+                hidePlaceholder();
+                var ring = item.querySelector('.cot-ring');
+                var sub = item.querySelector('.cot-tool-sub');
+                if (opts.subtask) {
+                    setTimeout(function () {
+                        var st = document.createElement('div');
+                        st.className = 'cot-subtask active';
+                        st.innerHTML = '<span class="cot-dot"></span><span class="cot-subtask-agent">' + opts.subtask.agent + '</span><span class="cot-subtask-desc">' + opts.subtask.description + '</span>';
+                        list.insertBefore(st, item.nextSibling);
+                        item._subtask = st;
+                    }, 600);
+                }
+                var finish = function () {
+                    item.classList.remove('running');
+                    ring.className = 'cot-dot';
+                    item.classList.add(ok ? 'ok' : 'fail');
+                    if (item._subtask) {
+                        item._subtask.classList.remove('active');
+                        item._subtask.classList.add('done');
+                    }
+                    sub.textContent = title;
+                    cb();
+                };
+                setTimeout(function () {
+                    item.classList.remove('pending');
+                    item.classList.add('running');
+                    setTimeout(finish, opts.run || 900);
+                }, opts.pending || 0);
+            }
+
+            function delay(ms, cb) {
+                setTimeout(cb, ms);
+            }
+
+            var run = function (steps, i) {
+                if (i >= steps.length) {
+                    hidePlaceholder();
+                    return;
+                }
+                showPlaceholder('Thinking');
+                steps[i](function () {
+                    delay(300, function () {
+                        run(steps, i + 1);
+                    });
+                });
+            };
+
+            setTimeout(function () {
+                run([
+                    function (next) {
+                        appendReasoning(
+                            'The user asked about implementing a sorting algorithm\nThis appears to be a technical question requiring code examples\nLet me check what already exists in `src/server`',
+                            14, next);
+                    },
+                    function (next) { appendTool('glob', 'glob', 'Matching src/**/*.lua', true, next, { pending: 600, run: 650 }); },
+                    function (next) { appendTool('grep', 'grep', 'Found 3 matches in 2 files', true, next, { subtitle: 'Searching for "sort" in src/', output: 'src/server/game.lua:12: local sortTable = {}\nsrc/server/game.lua:38: sortTable[#sortTable + 1] = value\nsrc/shared/Sort.lua:5: -- sorting utilities' }); },
+                    function (next) { appendTool('read', 'read', 'Read src/server/game.lua', true, next, { subtitle: 'Reading src/server/game.lua', output: 'local Players = game:GetService("Players")\n\nlocal sortTable = {}\n\nlocal function onPlayerJoin(player)\n\t-- sortTable sorting logic\nend' }); },
+                    function (next) {
+                        appendReasoning(
+                            'Quick sort: `O(n log n)` average case, good for general purpose\nMerge sort: `O(n log n)` worst case, stable and predictable\nBubble sort: `O(n²)`, simple but inefficient for large datasets\nLet me double-check the standard approach',
+                            14, next);
+                    },
+                    function (next) { appendTool('websearch', 'websearch', 'Searching for "merge sort implementation"', true, next); },
+                    function (next) { appendTool('webfetch', 'webfetch', 'Fetched https://en.wikipedia.org/wiki/Merge_sort', true, next, { subtitle: 'Fetching https://en.wikipedia.org/wiki/Merge_sort', output: 'Merge sort\n\nIn computer science, merge sort is an efficient, general-purpose, comparison-based sorting algorithm. Most implementations produce a stable sort.\n\nComplexity: O(n log n)', attachments: [{ mime: 'text/html', filename: 'merge-sort.html' }, { mime: 'image/png', filename: 'complexity-chart.png' }] }); },
+                    function (next) { appendTool('question', 'question', 'Asked user: which algorithm do you prefer?', true, next, { run: 4200, subtitle: 'Waiting for your answer…', output: 'User answered: merge sort' }); },
+                    function (next) { appendTool('skill', 'skill', 'Loaded skill: luau-basics', true, next); },
+                    function (next) { appendTool('edit', 'edit', 'Updated src/server/game.lua', true, next, { subtitle: 'Editing src/server/game.lua', output: 'src/server/game.lua\n+ local sorted = mergeSort(sortTable)\n+ return sorted' }); },
+                    function (next) { appendTool('write', 'write', 'Wrote src/shared/Sort.lua', true, next); },
+                    function (next) { appendTool('apply_patch', 'apply_patch', 'Applied patch to src/README.md', true, next); },
+                    function (next) { appendTool('todowrite', 'todowrite', 'Updated todo list', true, next); },
+                    function (next) { appendTool('lsp', 'lsp', 'Find references for sort()', true, next); },
+                    function (next) { appendTool('bash', 'bash', 'luau-analyze src', true, next, { subtitle: 'Running luau-analyze src', output: 'luau-analyze v0.658\nChecking 42 files in src\nNo type errors found' }); },
+                    function (next) {
+                        appendReasoning(
+                            'The analysis passed — now I need to verify the implementation\nLet me run the test suite',
+                            14, next);
+                    },
+                    function (next) { appendTool('bash', 'bash', 'npm run test - command failed with exit code 1', false, next, { subtitle: 'Running npm run test', output: '> robocorp@1.0.0 test\n> luau-analyze --flavor roblox src\n\nType errors found in 2 files:\n  src/server/game.lua:41 - expected number, got string' }); },
+                    function (next) { appendTool('task', 'task', 'Subagent "explore" - completed', true, next, { run: 3000, subtitle: 'Running subagent "explore"', subtask: { agent: 'explore', description: 'Exploring src for sorting utilities' } }); },
+                    function (next) { appendTool('mcp', 'mcp__github', 'github.get_issue - issue #42', true, next); },
+                    function (next) { appendTool('execute', 'execute', 'Executed code mode command', true, next); },
+                    function (next) { appendTool('plan', 'plan', 'Created plan for the implementation', true, next); },
+                    function (next) { appendTool('invalid', 'invalid', 'Tool call rejected - invalid input', false, next); },
+                    function (next) { appendMarker('retry', 'Retry 2 — APIError: connection reset, retrying'); },
+                    function (next) { appendMarker('compaction', 'Context compacted — continuing'); },
+                    function (next) {
+                        appendReasoning(
+                            'Given the educational context, I will demonstrate merge sort for its clarity\nIt shows the divide-and-conquer principle effectively',
+                            14, next);
+                    }
+                ], 0);
+            }, 500);
+        </script>
+    </body>
+</html>

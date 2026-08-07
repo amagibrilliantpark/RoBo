@@ -17,13 +17,20 @@ function initSSE() {
     const props = data.properties || {};
     const sid = props.sessionID || props.id || "";
     const isCurrent = sid === window.App.currentSession;
+    // Child sessions (task tool subagents) stream their parts on the same
+    // global /event bus; route them to the Chain so they render nested
+    // under the owning task tool row.
+    const isChild = !!(window.Chain && window.Chain.isChildSession(sid));
 
     switch (data.type) {
       case "message.part.updated":
         if (isCurrent) handlePartUpdate(data.properties);
+        else if (isChild && props.part) window.Chain.attachChildPart(sid, props.part);
         break;
       case "message.part.delta":
         if (isCurrent) handlePartDelta(data.properties);
+        else if (isChild)
+          window.Chain.appendChildPartDelta(sid, props.partID, props.field, props.delta);
         break;
       case "message.updated":
         if (isCurrent) handleMessageUpdated(data.properties);
@@ -38,9 +45,11 @@ function initSSE() {
         // A part was removed (e.g. cancelled streaming tool call). Without
         // this handler the part element stayed orphaned in the chat.
         if (isCurrent) handleMessagePartRemoved(data.properties);
+        else if (isChild && props.partID) window.Chain.removeChildPart(sid, props.partID);
         break;
       case "session.status":
-        handleSessionStatus(data.properties);
+        if (isChild) window.Chain.childSessionStatus(sid, props.status);
+        else handleSessionStatus(data.properties);
         break;
       case "session.idle":
         handleSessionIdle(data.properties);
@@ -137,6 +146,7 @@ async function refreshSessionStats() {
 function resetSSEState() {
   activeTextPartID = null;
   isCompacting = false;
+  if (window.App) window.App.sessionBusy = false;
 }
 
 window.SSE = {

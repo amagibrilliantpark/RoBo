@@ -59,11 +59,23 @@ async function sendMessage() {
     // just resolved and the chatArea has been prepared by ensureSession.
     Chat.Messages.appendMessage("user", text);
 
+    // A new turn: separate the previous chain from this one so the new
+    // chain doesn't start flush against the old chain's end.
+    if (window.Chain && window.Chain.markTurn) window.Chain.markTurn();
+
+    // Cover the pre-step-start gap in the chain of thoughts: nothing has
+    // streamed yet, so show the placeholder until the first part lands.
+    if (window.Chain) window.Chain.showPlaceholder("Thinking");
+
     const model = window.App.currentModel;
     const agent = window.App.currentAgent;
     const modelWithVariant = model
       ? { ...model, variant: getVariantForModel(model) }
       : null;
+
+    // The generation is starting: keep the Stop button up until the
+    // session actually reports idle (not on per-step message completions).
+    window.App.sessionBusy = true;
 
     await window.electronAPI.message.sendAsync(
       sessionId,
@@ -72,8 +84,12 @@ async function sendMessage() {
       agent || "build",
     );
   } catch (error) {
+    window.App.sessionBusy = false;
     Chat.Indicators.hideAllStatusIndicators();
     Chat.Messages.appendMessage("assistant", "Error: " + error.message);
+    if (window.Chain && window.Chain.hidePlaceholder) {
+      window.Chain.hidePlaceholder();
+    }
     console.error(
       `[Perf] ❌ sendMessage FAILED after ${(performance.now() - sendStartTime).toFixed(0)}ms:`,
       error.message,

@@ -1,4 +1,7 @@
-/** Re-render the full message list from session history. */
+/** Re-render the full message list from session history. Chain of thought
+ *  rows are rebuilt from the reasoning/tool parts in the same pass, in
+ *  part order — so the chain survives an app restart and stays interleaved
+ *  with the answer bubbles exactly like the live stream. */
 function renderMessages(messages) {
   const container = Utils.$('chatArea');
   const emptyState = Utils.$('emptyState');
@@ -6,18 +9,19 @@ function renderMessages(messages) {
   container.querySelectorAll('.message, .thinking-indicator, .error-indicator, .compaction-indicator, .usage-indicator, .streaming-cursor').forEach(m => m.remove());
   Chat.Streaming.resetAccum();
 
-  if (!messages || messages.length === 0) {
+  const msgList = (messages && (messages.value || messages)) || [];
+  if (msgList.length === 0) {
     emptyState.classList.add('active');
+    if (window.Chain && window.Chain.beginRebuild) window.Chain.beginRebuild();
     return;
   }
 
   emptyState.classList.remove('active');
 
-  const msgList = messages.value || messages;
-
   // Batch all bubbles into a single fragment so the browser performs one
   // layout/paint instead of one forced reflow per message (scrollTop reads).
   const fragment = document.createDocumentFragment();
+  if (window.Chain && window.Chain.beginRebuild) window.Chain.beginRebuild();
   for (const msg of msgList) {
     const role = msg.info ? msg.info.role : 'assistant';
     const id = msg.info ? msg.info.id : null;
@@ -32,12 +36,17 @@ function renderMessages(messages) {
             continue;
           }
           fragment.appendChild(createMessageElement(role, part.text, id));
+        } else if (part.type === 'reasoning' || part.type === 'tool') {
+          if (window.Chain && window.Chain.rebuildPart) {
+            window.Chain.rebuildPart(part, fragment);
+          }
         }
       }
     }
   }
 
   container.appendChild(fragment);
+  if (window.Chain && window.Chain.endRebuild) window.Chain.endRebuild();
   container.scrollTop = container.scrollHeight;
 }
 

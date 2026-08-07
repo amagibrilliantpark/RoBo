@@ -19,6 +19,10 @@ function showQuestionModal(properties) {
   activeOptionIndex = -1;
   isSubmitting = false;
   questionModalOpen = true;
+  // The model's turn may have ended on this question (the session stays
+  // busy, but a trailing message.updated(completed) would drop the stop
+  // button). Keep stop-mode active until the user answers.
+  window.App.questionPending = true;
 
   window.Chat.hideThinking();
 

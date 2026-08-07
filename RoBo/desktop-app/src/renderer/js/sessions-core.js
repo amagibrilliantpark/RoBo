@@ -82,6 +82,12 @@ async function selectSession(sessionId) {
     if (window.SSE && typeof window.SSE.resetState === "function") {
       window.SSE.resetState();
     }
+    // The chain of thoughts is session-scoped; drop the previous session's
+    // reasoning/tool rows and child-session registrations.
+    if (window.Chain && typeof window.Chain.reset === "function") {
+      window.Chain.reset();
+    }
+    window.App.questionPending = false;
     // The abortedByUser flag is per-message; clear it on session switch.
     window.App.abortedByUser = false;
     // Clear the chat area immediately so the user doesn't see the

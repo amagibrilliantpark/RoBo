@@ -47,19 +47,25 @@ function flushStreamingRender() {
   // Check if we have any code block markers - if yes, do a full re-render
   const recentText = streamingTextAccum.slice(streamingRenderThreshold);
   const hasCodeMarkers = recentText.includes('```');
-  
-  if (hasCodeMarkers || streamingTextAccum.length < 500) {
-    // Full re-render (for code blocks or short texts)
+  // Markdown tokens split across rAF batches (a chunk starting or ending
+  // with * / backtick) can't be appended incrementally — a full re-render
+  // heals the boundary.
+  const boundaryRisk = /^[*`]/.test(recentText) || /[*`]$/.test(recentText);
+
+  if (hasCodeMarkers || boundaryRisk) {
+    // Full re-render (for code blocks or boundary-split markdown)
     streamingTargetMsg.querySelectorAll('.msg-text, .streaming-cursor, pre').forEach(el => el.remove());
     Chat.Messages.renderTextContent(streamingTargetMsg, streamingTextAccum);
     streamingRenderThreshold = streamingTextAccum.length;
   } else {
-    // Optimized incremental append - find last text span and add to it
+    // Incremental: append one small span instead of re-parsing the whole
+    // accumulated HTML (lastSpan.innerHTML += was O(total) per frame).
     const spans = streamingTargetMsg.querySelectorAll('.msg-text');
     if (spans.length > 0) {
-      const lastSpan = spans[spans.length - 1];
-      const remainingText = streamingTextAccum.slice(streamingRenderThreshold);
-      lastSpan.innerHTML += Chat.Messages.renderInlineMarkdown(remainingText);
+      const tail = document.createElement('span');
+      tail.className = 'msg-text';
+      tail.innerHTML = Chat.Messages.renderInlineMarkdown(recentText);
+      spans[spans.length - 1].insertAdjacentElement('afterend', tail);
       streamingRenderThreshold = streamingTextAccum.length;
     } else {
       // Fallback to full render if no spans exist yet
@@ -71,10 +77,10 @@ function flushStreamingRender() {
   
   addStreamingCursor(streamingTargetMsg);
 
-  // Scroll once per animation frame instead of on every incoming delta,
-  // avoiding a forced synchronous layout for each streamed token.
-  const container = streamingTargetMsg.parentNode;
-  if (container) container.scrollTop = container.scrollHeight;
+  // One shared rAF scroll (respects the user having scrolled up to read).
+  if (window.Chain && window.Chain.scheduleScroll) {
+    window.Chain.scheduleScroll();
+  }
 }
 
 /** Clean up streaming state when the response is complete. */
@@ -91,14 +97,21 @@ function finalizeStreaming() {
 
 /** Reset all streaming state (called on new message or session switch). */
 function resetStreamingAccum() {
+  // Flush any scheduled-but-unflushed delta first: if a part boundary
+  // (step-start/step-finish or a new text part) arrives in the same tick
+  // as a delta, the pending rAF render would otherwise be cancelled and
+  // the final chunk of the previous part would never reach the DOM.
+  if (streamingRenderPending && streamingTargetMsg && streamingTargetMsg.parentNode) {
+    flushStreamingRender();
+  }
+  if (streamingTargetMsg) {
+    streamingTargetMsg.querySelectorAll('.streaming-cursor').forEach(c => c.remove());
+  }
   streamingTextAccum = '';
   streamingTargetMsg = null;
   streamingRenderPending = false;
   lastStreamingChunk = '';
   streamingRenderThreshold = 0;
-  // Strip any leftover blinking cursor from the previous run so it
-  // doesn't linger on an empty bubble after a reset.
-  removeStreamingCursor();
 }
 
 /** Add a blinking cursor element at the end of the streaming message. */
@@ -111,9 +124,12 @@ function addStreamingCursor(parentMsg) {
   }
 }
 
-/** Remove all streaming cursor elements from the DOM. */
+/** Remove all streaming cursor elements from the DOM. Scoped to the active
+ *  bubble when one exists — the old document-wide query ran on every
+ *  delta and scanned the whole chat (plus the chain's reasoning rows). */
 function removeStreamingCursor() {
-  document.querySelectorAll('.streaming-cursor').forEach(c => c.remove());
+  const scope = streamingTargetMsg || document;
+  scope.querySelectorAll('.streaming-cursor').forEach(c => c.remove());
 }
 
 window.Chat = window.Chat || {};

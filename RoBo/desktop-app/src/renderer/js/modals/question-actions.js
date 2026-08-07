@@ -59,6 +59,7 @@ function closeQuestionModal() {
   questionModalOpen = false;
   pendingQuestion = null;
   isSubmitting = false;
+  window.App.questionPending = false;
 }
 
 /** Set up event listeners for the question modal (close button, text input, keyboard nav). */
