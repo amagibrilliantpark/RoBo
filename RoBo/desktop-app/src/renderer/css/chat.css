@@ -25,7 +25,7 @@
 .ai-message .msg-text { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500; line-height: 1.6; }
 .ai-message .msg-text strong { font-weight: 700; color: var(--text-primary); }
 .ai-message .msg-text em { font-style: italic; }
-.ai-message .msg-text code { background: var(--accent-hover); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+.ai-message .msg-text code { background: var(--accent-hover); padding: 1px 6px; border-radius: 4px; font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .ai-message .msg-text + pre { margin-top: 10px; }
 .ai-message pre + .msg-text { margin-top: 10px; }
 

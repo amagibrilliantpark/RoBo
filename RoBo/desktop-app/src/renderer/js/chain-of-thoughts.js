@@ -117,11 +117,22 @@
    *  the card lands right below the live answer bubble. */
   function insertTool(el) {
     var area = chatArea();
-    var streaming = area ? area.querySelector(".ai-message-streaming") : null;
-    if (streaming && streaming.isConnected) {
-      streaming.insertAdjacentElement("afterend", el);
+    // The card lands below the newest thing in the thread: the LAST
+    // streaming bubble (the answer the model is writing) or the chain end,
+    // whichever sits further down. The bubble alone could drop the card
+    // mid-chain when reasoning rows already extend past it; a stale
+    // .ai-message-streaming on an earlier bubble must never be the anchor.
+    var streaming = null;
+    if (area) {
+      var all = area.querySelectorAll(".ai-message-streaming");
+      if (all.length > 0) streaming = all[all.length - 1];
+    }
+    var anchor = latestOf(streaming, flowAnchor());
+    if (anchor && anchor.isConnected) {
+      anchor.insertAdjacentElement("afterend", el);
     } else {
-      insertFlow(el);
+      var a = chatArea();
+      if (a) a.appendChild(el);
     }
     turnAnchor = el;
   }
@@ -240,14 +251,14 @@
 
   /* ── Reasoning parts ── */
 
-  function buildReasoningHead(keepThinkingLabel) {
+  function buildReasoningHead() {
     var head = document.createElement("div");
     head.className = "cot-head";
     var dot = document.createElement("span");
     dot.className = "cot-dot";
     var title = document.createElement("span");
     title.className = "cot-title";
-    title.textContent = keepThinkingLabel ? "Thinking" : "Reasoning";
+    title.textContent = "Thinking";
     var cursor = document.createElement("span");
     cursor.className = "stream-cursor";
     head.appendChild(dot);
@@ -285,7 +296,7 @@
     el.classList.add("cot-item", "reasoning", "active", "no-anim");
     el.dataset.partId = part.id;
     el.textContent = "";
-    el.appendChild(buildReasoningHead(true));
+    el.appendChild(buildReasoningHead());
     var body = document.createElement("div");
     body.className = "cot-body";
     var textEl = document.createElement("div");

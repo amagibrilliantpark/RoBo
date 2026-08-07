@@ -107,6 +107,11 @@ function resetStreamingAccum() {
   }
   if (streamingTargetMsg) {
     streamingTargetMsg.querySelectorAll('.streaming-cursor').forEach(c => c.remove());
+    // Drop the streaming marker on the outgoing bubble: finalizeStreaming
+    // may never run for it (step-start resets before message.updated), and a
+    // stale .ai-message-streaming would make insertTool anchor tool cards to
+    // an old bubble instead of the current one.
+    streamingTargetMsg.classList.remove("ai-message-streaming");
   }
   streamingTextAccum = '';
   streamingTargetMsg = null;

@@ -94,9 +94,9 @@
 
 .chat-area .cot-code {
   background: var(--accent-hover);
-  padding: 1px 5px; border-radius: 4px;
+  padding: 1px 6px; border-radius: 4px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; font-weight: 500; color: var(--text-primary);
+  font-size: 12px; font-weight: 700; color: var(--text-primary);
 }
 
 .chat-area .cot-item.reasoning.active .cot-title { color: var(--accent-color); }
