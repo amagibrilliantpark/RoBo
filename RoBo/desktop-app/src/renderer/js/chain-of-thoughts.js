@@ -53,6 +53,18 @@
   var pendingReasoning = null;
   var turnAnchor = null;   // last chain element of the current turn (or its user msg)
   var turnUserMsg = null;  // current turn's user message element
+  // Consecutive same-type exploration calls (read/glob/grep/...) and
+  // consecutive edits collapse into ONE card ("read · 3 files") so the
+  // flow stays airy — edits especially, since the AI typically makes a
+  // couple in a row, thinks, then edits again. The group only stays open
+  // while NOTHING else happened in between — any reasoning, text, marker
+  // or different tool closes it (the flow must mirror the AI's position,
+  // so a later read after a reasoning never joins the old block).
+  var GROUPABLE_TOOLS = { read: 1, glob: 1, grep: 1, websearch: 1, webfetch: 1, edit: 1, write: 1 };
+  var currentGroup = null; // { tool, entry, listEl, count, rows, ringEl }
+
+  function isGroupable(tool) { return !!GROUPABLE_TOOLS[tool]; }
+  function breakGroup() { currentGroup = null; }
 
   function log() {
     if (!window.App || !window.App.debug) return;
@@ -191,13 +203,24 @@
   }
 
   /** Derive a title fallback from a tool part's input. */
+  /** Long inputs are noise in a compact flow: a webfetch shows its HOSTNAME
+   *  ("github.com"), not the full URL — the full URL rides in the hover
+   *  tooltip instead. */
+  function shortUrl(url) {
+    try {
+      var host = new URL(url).hostname;
+      if (host.indexOf("www.") === 0) host = host.slice(4);
+      return host || url;
+    } catch (e) { return url; }
+  }
+
   function inputSubtitle(tool, input) {
     if (!input || typeof input !== "object") return "";
     if (typeof input.command === "string") return input.command;
     if (typeof input.filePath === "string") return input.filePath;
     if (typeof input.path === "string") return input.path;
     if (typeof input.pattern === "string") return input.pattern;
-    if (typeof input.url === "string") return input.url;
+    if (typeof input.url === "string") return shortUrl(input.url);
     if (typeof input.query === "string") return input.query;
     if (typeof input.description === "string") return input.description;
     if (tool === "question" && Array.isArray(input.questions) && input.questions.length) {
@@ -206,6 +229,14 @@
       return text.length > 70 ? text.slice(0, 67) + "..." : text;
     }
     return "";
+  }
+
+  /** The hover tooltip carries what the compact title omits: the FULL url
+   *  behind a hostname-only webfetch title. */
+  function setToolHover(entry, part) {
+    var input = (part.state && part.state.input) || {};
+    if (typeof input.url === "string") entry.el.title = input.url;
+    else entry.el.removeAttribute("title");
   }
 
   /* ── Turn lifecycle ── */
@@ -224,12 +255,14 @@
     childParts = {};
     placeholderEl = null;
     pendingReasoning = null;
+    currentGroup = null; // a new turn never continues a previous group
     return turnUserMsg;
   }
 
   /* ── Placeholder (fills empty stretches: before first part, between steps) ── */
 
   function showPlaceholder(text) {
+    breakGroup(); // a visible thinking gap ends any open tool group
     if (placeholderEl) return;
     placeholderEl = document.createElement("div");
     placeholderEl.className = "cot-placeholder";
@@ -241,6 +274,7 @@
   }
 
   function hidePlaceholder() {
+    breakGroup(); // whatever replaces the placeholder is a new flow position
     if (placeholderEl) {
       placeholderEl.remove();
       placeholderEl = null;
@@ -340,6 +374,7 @@
 
   function upsertReasoning(part) {
     if (!part || !part.id) return;
+    breakGroup(); // reasoning between tool calls closes the previous group
     var existing = items[part.id];
     if (existing) {
       // Finalize: full part arrives with time.end after the deltas.
@@ -463,6 +498,7 @@
       entry.el.classList.remove("pending");
       entry.el.classList.add("running");
       entry.titleEl.textContent = state.title || inputSubtitle(part.tool, state.input) || "";
+      setToolHover(entry, part);
       // task tool: the child session ID arrives in the running state's
       // metadata — register it so the child's parts stream nested below.
       registerChild(entry, part);
@@ -487,19 +523,195 @@
   }
 
   function upsertTool(part) {
+    handleToolPart(part, function (el) { insertTool(el); });
+  }
+
+  /* ── Tool grouping (consecutive same-type exploration calls) ── */
+
+  function groupNoun(tool) {
+    if (tool === "grep") return "matches";
+    if (tool === "websearch" || tool === "webfetch") return "urls";
+    return "files";
+  }
+
+  function updateGroupRowState(member, part) {
+    member.status = (part.state && part.state.status) || "pending";
+    // Tool parts often arrive as pending WITHOUT input; the richer update
+    // (running/completed with filePath etc.) must refresh the detail label
+    // — but never downgrade a good label back to the tool name.
+    var lbl = groupLabel(part);
+    if (lbl !== part.tool) member.label = lbl;
+  }
+
+  function updateGroupHead(group) {
+    // The tool name lives in the name chip ("read") — the title only shows
+    // the growing count, so the head reads "read · 2 files" once, not twice.
+    group.entry.titleEl.textContent = group.count + " " + groupNoun(group.tool);
+    var anyPending = false;
+    var anyFailed = false;
+    for (var i = 0; i < group.rows.length; i++) {
+      var st = group.rows[i].status;
+      if (st !== "completed" && st !== "error") anyPending = true;
+      if (st === "error") anyFailed = true;
+    }
+    if (anyPending) {
+      // Re-opened group (new member after a settle): drop settled classes so
+      // the detail rows become visible again.
+      group.entry.el.classList.remove("ok", "fail");
+      group.entry.el.classList.remove("pending");
+      group.entry.el.classList.add("running");
+      if (!group.ringEl) {
+        var ring = document.createElement("span");
+        ring.className = "cot-ring";
+        var head = group.entry.el.querySelector(".cot-head");
+        head.insertBefore(ring, head.firstChild);
+        group.ringEl = ring;
+      }
+    } else if (group.ringEl && group.ringEl.isConnected) {
+      group.ringEl.remove();
+      group.ringEl = null;
+      group.entry.el.classList.remove("running");
+      group.entry.el.classList.add(anyFailed ? "fail" : "ok");
+    }
+  }
+
+  /** The short label shown in the click-to-open group detail: file NAME
+   *  for reads/edits/writes (not the full path), the raw pattern/query for
+   *  the others. Handles both / and \ path separators (Windows). */
+  function groupLabel(part) {
+    var input = (part.state && part.state.input) || {};
+    var raw = input.filePath || input.path || input.pattern || input.url || input.query || "";
+    if (!raw) return part.tool;
+    if (typeof input.filePath === "string" || typeof input.path === "string") {
+      var norm = raw.replace(/\\/g, "/");
+      var idx = norm.lastIndexOf("/");
+      return idx === -1 ? raw : norm.slice(idx + 1);
+    }
+    if (typeof input.url === "string") return shortUrl(raw);
+    return raw;
+  }
+
+  function renderGroupDetail(group, list) {
+    list.textContent = "";
+    for (var i = 0; i < group.rows.length; i++) {
+      var m = group.rows[i];
+      var line = document.createElement("div");
+      line.className = "cot-group-detail-item" + (m.status === "error" ? " failed" : "");
+      line.textContent = m.label;
+      list.appendChild(line);
+    }
+  }
+
+  /** The count text is clickable: one click opens a LIGHT detail below the
+   *  card (just the file names), another click folds it away. */
+  function toggleGroupDetail(group) {
+    var item = group.entry.el;
+    var list = item.querySelector(".cot-group-detail");
+    if (!list) {
+      list = document.createElement("div");
+      list.className = "cot-group-detail";
+      item.appendChild(list);
+    }
+    if (item.classList.contains("open")) {
+      item.classList.remove("open");
+      return;
+    }
+    renderGroupDetail(group, list);
+    item.classList.add("open");
+  }
+
+  function refreshGroupDetail(group) {
+    if (!group.entry.el.classList.contains("open")) return;
+    var list = group.entry.el.querySelector(".cot-group-detail");
+    if (list) renderGroupDetail(group, list);
+  }
+
+  /** The second consecutive same-type call turns the normal card into a
+   *  group card in place: header becomes "2 files" and the count keeps
+   *  climbing live. The group is always the compact single line — the
+   *  per-call names only appear on demand, under the count (click to
+   *  toggle). Position never moves. */
+  function morphToGroup(entry, part) {
+    var item = entry.el;
+    item.classList.add("group");
+    var group = {
+      tool: entry.groupData.tool,
+      entry: entry,
+      count: 2,
+      rows: [],
+      ringEl: item.querySelector(".cot-ring") || null
+    };
+    entry.groupData.group = group;
+    currentGroup = group;
+
+    var m1 = { isGroupRow: true, group: group, status: "pending", label: groupLabel(entry.groupData.firstPart) };
+    items[entry.groupData.firstPart.id] = m1;
+    group.rows.push(m1);
+    var m2 = { isGroupRow: true, group: group, status: "pending", label: groupLabel(part) };
+    items[part.id] = m2;
+    group.rows.push(m2);
+    updateGroupRowState(m1, entry.groupData.firstPart);
+    updateGroupRowState(m2, part);
+    entry.titleEl.classList.add("group-toggle");
+    entry.titleEl.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      toggleGroupDetail(group);
+    });
+    updateGroupHead(group);
+    log("tool group:", group.tool, "x2");
+  }
+
+  function appendGroupMember(part) {
+    var group = currentGroup;
+    var m = { isGroupRow: true, group: group, status: "pending", label: groupLabel(part) };
+    items[part.id] = m;
+    group.rows.push(m);
+    group.count++;
+    updateGroupRowState(m, part);
+    updateGroupHead(group);
+    refreshGroupDetail(group);
+    log("tool group:", group.tool, "x" + group.count);
+  }
+
+  /** Shared by the live stream (upsertTool) and the rebuild path: creates
+   *  cards, morphs/extends groups, routes updates to rows or cards. */
+  function handleToolPart(part, insertFn) {
     if (!part || !part.id) return;
     var existing = items[part.id];
-    if (!existing) {
-      var built = makeToolRow(part);
-      insertTool(built.el);
-      existing = {
-        el: built.el, type: "tool", state: part.state || {},
-        titleEl: built.titleEl, outputEl: built.outputEl, childrenEl: null
-      };
-      items[part.id] = existing;
-      log("tool row:", part.tool, part.state && part.state.status);
+    if (existing) {
+      if (existing.isGroupRow) {
+        updateGroupRowState(existing, part);
+        updateGroupHead(existing.group);
+        refreshGroupDetail(existing.group);
+      } else {
+        // Solo card: keep the freshest part for a possible later morph.
+        if (existing.groupData) existing.groupData.firstPart = part;
+        applyToolState(existing, part);
+      }
+      return;
+    }
+    if (isGroupable(part.tool) && currentGroup && currentGroup.tool === part.tool) {
+      if (currentGroup.count === 1) {
+        morphToGroup(currentGroup.entry, part);
+      } else {
+        appendGroupMember(part);
+      }
+      return;
+    }
+    breakGroup();
+    var built = makeToolRow(part);
+    insertFn(built.el);
+    existing = {
+      el: built.el, type: "tool", state: part.state || {},
+      titleEl: built.titleEl, outputEl: built.outputEl, childrenEl: null
+    };
+    items[part.id] = existing;
+    if (isGroupable(part.tool)) {
+      existing.groupData = { tool: part.tool, firstPart: part, group: null, row: null };
+      currentGroup = { tool: part.tool, entry: existing, listEl: null, count: 1, rows: [], ringEl: null };
     }
     applyToolState(existing, part);
+    log("tool row:", part.tool, part.state && part.state.status);
   }
 
   /** Map a task tool's child session to its row (for nested streaming). */
@@ -519,15 +731,18 @@
     item.classList.remove("pending", "running");
     item.classList.add(ok ? "ok" : "fail");
     // No status dot on finished tools: the spinning ring only exists while
-    // the tool is pending/running, then it disappears.
+    // the tool is pending/running, then it disappears. Grouped cards keep
+    // their ring until the WHOLE group settles (updateGroupHead removes it).
     var ring = item.querySelector(".cot-ring");
-    if (ring) ring.remove();
+    var solo = !(entry.groupData && entry.groupData.group);
+    if (ring && solo) ring.remove();
 
     var state = part.state || {};
     var fallback = inputSubtitle(part.tool, state.input) || "";
     entry.titleEl.textContent = ok
       ? (state.title || fallback)
       : (state.error || state.title || fallback);
+    setToolHover(entry, part);
 
     registerChild(entry, part);
     renderToolOutput(entry, part);
@@ -706,6 +921,7 @@
   /* ── Markers (retry / compaction) ── */
 
   function addMarker(type, text) {
+    breakGroup(); // a marker (retry/compaction) is a flow change: groups close
     var cls = typeof type === "string" ? type.replace(/[^a-z0-9-]/gi, "") : "note";
     if (!cls) cls = "note";
     var item = document.createElement("div");
@@ -733,7 +949,20 @@
 
   function removePart(partID) {
     var entry = items[partID];
-    if (entry) {
+    if (entry && entry.isGroupRow) {
+      var group = entry.group;
+      group.rows = group.rows.filter(function (m) { return m !== entry; });
+      group.count--;
+      delete items[partID];
+      if (group.rows.length === 0) {
+        group.entry.el.remove();
+        delete items[group.entry.el.dataset.partId];
+        currentGroup = null;
+      } else {
+        updateGroupHead(group);
+        refreshGroupDetail(group);
+      }
+    } else if (entry) {
       entry.el.remove();
       delete items[partID];
     }
@@ -763,6 +992,7 @@
     pendingReasoning = null;
     turnAnchor = null;
     turnUserMsg = null;
+    currentGroup = null;
   }
 
   /** Drop every chain row and registry (session switch). */
@@ -789,6 +1019,7 @@
     var target = parent || chatArea();
     if (!target) return;
     if (part.type === "reasoning") {
+      breakGroup(); // reasoning between tools closes any open group (live parity)
       var built = makeReasoningRow(part);
       var entry = {
         el: built.el, type: "reasoning", buf: part.text || "",
@@ -801,14 +1032,9 @@
       else if (part.text) renderRich(entry.textEl, part.text);
       target.appendChild(built.el);
     } else if (part.type === "tool") {
-      var t = makeToolRow(part);
-      var toolEntry = {
-        el: t.el, type: "tool", state: part.state || {},
-        titleEl: t.titleEl, outputEl: t.outputEl, childrenEl: null
-      };
-      items[part.id] = toolEntry;
-      applyToolState(toolEntry, part);
-      target.appendChild(t.el);
+      // Shared with the live stream: consecutive same-type exploration
+      // calls get rebuilt as one grouped card, in flow position.
+      handleToolPart(part, function (el) { target.appendChild(el); });
     }
   }
 
@@ -819,6 +1045,7 @@
     turnAnchor = turnUserMsg || null;
     placeholderEl = null;
     pendingReasoning = null;
+    currentGroup = null;
     log("rebuild done; rows:", Object.keys(items).length);
   }
 

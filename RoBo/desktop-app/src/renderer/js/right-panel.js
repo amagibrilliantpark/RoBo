@@ -4,10 +4,14 @@ function updateSessionName(title) {
   if (el) el.textContent = title;
 }
 
-/** Update token count, percentage used, and cost in the context stats bar. */
+/** Update the context ring (inside the prompt box) and its hover modal.
+ *  The ring is an empty donut whose arc fills with usage. The fill color
+ *  only climbs through ACCENT tones (soft -> mid -> deep), never clashing
+ *  with the theme. The modal opens instantly on hover — no animation. */
 function updateContextStats(tokenData) {
-  const el = document.getElementById('rpStats');
-  if (!el) return;
+  const ring = document.getElementById('ctxRing');
+  const fill = document.getElementById('ctxRingFill');
+  if (!ring || !fill) return;
 
   let tokens = 0;
   let cost = 0;
@@ -40,12 +44,20 @@ function updateContextStats(tokenData) {
   }
 
   const percent = maxTokens > 0 ? Math.min(100, Math.round((tokens / maxTokens) * 100)) : 0;
-  const costStr = cost > 0 ? `$${cost.toFixed(4)}` : '$0.00';
-  const percentStr = maxTokens > 0 ? `${percent}% used` : '';
-  const tokenStr = tokens > 0 ? `${tokens.toLocaleString()} tokens` : '';
+  const CIRC = 2 * Math.PI * 7.5;
+  fill.style.strokeDashoffset = (CIRC * (1 - percent / 100)).toFixed(2);
+  ring.classList.remove('lv-soft', 'lv-mid', 'lv-deep');
+  ring.classList.add(percent < 60 ? 'lv-soft' : percent < 85 ? 'lv-mid' : 'lv-deep');
 
-  const parts = [tokenStr, percentStr, `${costStr} spent`].filter(Boolean);
-  el.innerHTML = parts.map(p => `<span>${p}</span>`).join('');
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  set('ctxTokens', tokens > 0 && maxTokens > 0
+    ? `${tokens.toLocaleString('en-US')} / ${maxTokens.toLocaleString('en-US')}`
+    : '0');
+  set('ctxPercent', maxTokens > 0 ? `${percent}%` : '—');
+  set('ctxCost', cost > 0 ? `$${cost.toFixed(4)}` : '$0.00');
 }
 
 /** Render the todo list with checkboxes in the right panel. */

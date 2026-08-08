@@ -14,6 +14,9 @@
   --accent-color: #4e87bb;
   --accent-hover: rgba(210,230,250,0.50);
   --accent-glass: rgba(160,200,235,0.09);
+  --ring-soft: #8fb8dd;
+  --ring-mid: #4e87bb;
+  --ring-deep: #2f5f8a;
   --shadow-color: rgba(160,200,235,0.09);
   --grid-color: transparent;
   --logo-fill: #c2d9f0;
@@ -45,6 +48,9 @@ body[data-theme="dark"] {
   --accent-color: #e8621a;
   --accent-hover: rgba(232,98,26,0.20);
   --accent-glass: rgba(232,98,26,0.08);
+  --ring-soft: #f09a63;
+  --ring-mid: #e8621a;
+  --ring-deep: #b8450a;
   --shadow-color: rgba(0,0,0,0.30);
   --grid-color: #1a2a3a;
   --logo-fill: #e8621a;

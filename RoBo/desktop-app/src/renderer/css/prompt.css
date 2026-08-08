@@ -27,13 +27,13 @@
   display: flex; align-items: center; gap: 6px; padding-bottom: 12px;
 }
 
-/* ── Send btn ── */
+/* ── Send btn (bottom row, aligned with the mode/model selectors) ── */
 .btn-send {
   width: 40px; height: 40px; border-radius: 10px; border: none;
   background: var(--accent-color); color: #fff;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0; transition: background 0.15s, transform 0.1s;
-  position: absolute; right: 14px; top: 0; bottom: 0; margin: auto 0;
+  position: absolute; right: 14px; bottom: 6px; margin: 0;
 }
 
 .btn-send:hover { opacity: 0.9; }
@@ -46,6 +46,59 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
 .btn-send.stop-mode svg.arrow-icon { display: none; }
 .btn-send:not(.stop-mode) svg.stop-icon { display: none; }
 .btn-send:not(.stop-mode) svg.arrow-icon { display: block; }
+
+/* ── Context ring (bottom-right of the prompt box) ──
+   An empty donut whose arc fills with usage. The fill only uses ACCENT
+   tones (soft -> mid -> deep) so it never clashes with the theme.
+   Hover opens the detail modal INSTANTLY — no animation. */
+.ctx-ring-wrap {
+  position: absolute; right: 74px; bottom: 18px;
+  z-index: 30; display: flex;
+}
+
+.ctx-ring {
+  width: 16px; height: 16px; display: flex;
+}
+.ctx-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+
+.ctx-track {
+  fill: none; stroke: var(--border-color); stroke-width: 2;
+}
+.ctx-fill {
+  fill: none; stroke: var(--ring-mid); stroke-width: 2; stroke-linecap: round;
+  stroke-dasharray: 47.12; stroke-dashoffset: 47.12;
+  transition: stroke-dashoffset 0.2s, stroke 0.2s;
+}
+.ctx-ring.lv-soft .ctx-fill { stroke: var(--ring-soft); }
+.ctx-ring.lv-mid .ctx-fill { stroke: var(--ring-mid); }
+.ctx-ring.lv-deep .ctx-fill { stroke: var(--ring-deep); }
+
+.ctx-modal {
+  display: none; position: absolute; right: 0; bottom: calc(100% + 8px);
+  background: var(--bg-modal); border: 1px solid var(--border-color);
+  border-radius: 10px; padding: 10px 12px; min-width: 200px;
+  box-shadow: 0 4px 18px var(--shadow-color), 0 2px 6px var(--shadow-color);
+  z-index: 300;
+}
+.ctx-ring-wrap:hover .ctx-modal { display: block; }
+
+.ctx-modal-title {
+  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin-bottom: 7px;
+}
+.ctx-modal-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 14px; padding: 2px 0;
+}
+.ctx-modal-row span {
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  color: var(--text-secondary);
+}
+.ctx-modal-row b {
+  font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 600;
+  color: var(--text-primary); white-space: nowrap;
+}
 
 /* ── Selectors ── */
 .selector-wrapper { position: relative; }

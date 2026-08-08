@@ -570,6 +570,20 @@
                                     />
                                 </svg>
                             </button>
+                            <div class="ctx-ring-wrap" id="ctxRingWrap">
+                                <div class="ctx-ring lv-mid" id="ctxRing">
+                                    <svg viewBox="0 0 18 18" aria-hidden="true">
+                                        <circle class="ctx-track" cx="9" cy="9" r="7.5"></circle>
+                                        <circle class="ctx-fill" id="ctxRingFill" cx="9" cy="9" r="7.5"></circle>
+                                    </svg>
+                                </div>
+                                <div class="ctx-modal" id="ctxModal">
+                                    <div class="ctx-modal-title">Context</div>
+                                    <div class="ctx-modal-row"><span>Tokens</span><b id="ctxTokens">0</b></div>
+                                    <div class="ctx-modal-row"><span>Used</span><b id="ctxPercent">0%</b></div>
+                                    <div class="ctx-modal-row"><span>Spent</span><b id="ctxCost">$0.00</b></div>
+                                </div>
+                            </div>
                             <div class="prompt-bottom">
                                 <div class="selector-wrapper">
                                     <button
@@ -617,12 +631,6 @@
 
             <aside class="right-panel">
                 <div class="rp-session-name" id="rpSessionName">New Chat</div>
-                <div class="rp-context-label">Context</div>
-                <div class="rp-stats" id="rpStats">
-                    <span>0 tokens</span>
-                    <span>0% used</span>
-                    <span>$0.00 spent</span>
-                </div>
                 <div class="rp-syncro-info" id="rpSyncRoInfo">
                     <svg
                         class="rp-info-icon"

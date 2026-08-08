@@ -156,6 +156,34 @@
 
 .chat-area .cot-item.tool.fail .cot-title { color: var(--color-danger); }
 
+/* Grouped exploration cards: the count text is the whole compact card.
+   Hover makes it prominent (it is clickable); clicking toggles the light
+   detail below — just the per-call names, nothing heavier. */
+.chat-area .cot-item.tool.group .cot-title.group-toggle {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.chat-area .cot-item.tool.group .cot-title.group-toggle:hover {
+  color: var(--accent-color);
+  text-decoration: underline;
+}
+
+.chat-area .cot-item.tool.group .cot-group-detail {
+  margin: 1px 14px 8px 27px;
+  border-left: 1px solid var(--border-color);
+  padding: 4px 0 4px 10px;
+  display: none;
+  flex-direction: column; gap: 2px;
+}
+.chat-area .cot-item.tool.group.open .cot-group-detail { display: flex; }
+.chat-area .cot-group-detail-item {
+  font-size: 12px; color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chat-area .cot-group-detail-item.failed { color: var(--color-danger); }
+
+
 /* Placeholder (empty stretches) */
 .chat-area .cot-placeholder {
   display: flex; align-items: center; gap: 9px;
