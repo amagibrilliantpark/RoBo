@@ -1,22 +1,18 @@
-const { spawn, exec, execSync } = require('child_process');
+/** Process lifecycle for the two bundled children: OpenCode (the AI
+ *  engine) and SyncRo (the Studio bridge).
+ *
+ *  This module owns the SPAWN side. The supporting machinery now lives in
+ *  sibling modules (all re-exported here so callers keep a single import):
+ *    - proc-utils.js       execAsync / sleep / isPidAlive
+ *    - opencode-binary.js  version pin, resolution & download
+ *    - process-kill.js     port sweeps, tree kills, image-name sweep */
 const path = require('path');
 const fs = require('fs');
-const https = require('https');
-const unzipper = require('unzipper');
+const { spawn } = require('child_process');
 const log = require('./logger');
-
-/** Execute a shell command asynchronously with timeout. */
-function execAsync(command, timeout = 5000) {
-  return new Promise((resolve) => {
-    exec(command, { encoding: 'utf-8', timeout }, (error, stdout) => {
-      if (error) {
-        resolve('');
-      } else {
-        resolve((stdout || '').trim());
-      }
-    });
-  });
-}
+const { execAsync, sleep, isPidAlive } = require('./proc-utils');
+const { OPENCODE_VERSION, findOpencodeExecutable, checkOpencodeVersion, downloadOpencodeBinary } = require('./opencode-binary');
+const { killProcessesOnPorts, gracefulKill, killProcessTree, killByImageName } = require('./process-kill');
 
 /** Spawn the OpenCode serve process and resolve when it's ready.
  *
@@ -37,11 +33,6 @@ async function startOpencode(instance) {
   const { project, ports } = instance;
   const spawnStart = Date.now();
 
-  // The ONLY accepted version. We pin to a single known-good build so
-  // every RoBo install runs the exact same OpenCode (and gets the same
-  // event payload shapes). Any other version gets re-downloaded.
-  const TARGET_VERSION = '1.17.18';
-  const DOWNLOAD_VERSION = '1.17.18';
   const isDev = process.argv.includes('--dev');
 
   // 1) Pick a candidate. We never look at PATH — see policy above.
@@ -65,14 +56,14 @@ async function startOpencode(instance) {
       log.info('OPENCODE', `  - Path:   ${found.path}`);
     } else {
       log.info('OPENCODE', `  - Result: no bundled copy found`);
-      log.info('OPENCODE', `  - Action: will download v${DOWNLOAD_VERSION} → ${path.join(project.path, 'opencode.exe')}`);
+      log.info('OPENCODE', `  - Action: will download v${OPENCODE_VERSION} → ${path.join(project.path, 'opencode.exe')}`);
     }
     log.info('OPENCODE', '============================================================');
   } else {
     log.info('OPENCODE',
       found
         ? `Using bundled opencode.exe (source: ${found.source}) at ${found.path} — NOT the PATH CLI`
-        : `No bundled opencode.exe found, will download v${DOWNLOAD_VERSION} into project — NOT the PATH CLI`);
+        : `No bundled opencode.exe found, will download v${OPENCODE_VERSION} into project — NOT the PATH CLI`);
   }
 
   let opencodePath = found ? found.path : null;
@@ -82,15 +73,15 @@ async function startOpencode(instance) {
   if (!opencodePath) {
     needDownload = true;
     if (!isDev) {
-      log.warn('OPENCODE', `OpenCode.exe not found next to the project or in app resources, downloading v${DOWNLOAD_VERSION}…`);
+      log.warn('OPENCODE', `OpenCode.exe not found next to the project or in app resources, downloading v${OPENCODE_VERSION}…`);
     }
   } else {
     const versionValid = await checkOpencodeVersion(opencodePath);
     if (!versionValid) {
       if (isDev) {
-        log.warn('OPENCODE', `Bundled opencode.exe is not v${TARGET_VERSION}, will re-download`);
+        log.warn('OPENCODE', `Bundled opencode.exe is not v${OPENCODE_VERSION}, will re-download`);
       } else {
-        log.warn('OPENCODE', `OpenCode at ${opencodePath} is not v${TARGET_VERSION}, downloading v${DOWNLOAD_VERSION}…`);
+        log.warn('OPENCODE', `OpenCode at ${opencodePath} is not v${OPENCODE_VERSION}, downloading v${OPENCODE_VERSION}…`);
       }
       needDownload = true;
     }
@@ -106,8 +97,8 @@ async function startOpencode(instance) {
         log.info('OPENCODE', `Download complete, source now: project (just-downloaded)`);
       }
     } catch (error) {
-      log.error('OPENCODE', `Failed to download OpenCode v${DOWNLOAD_VERSION}: ${error.message}`);
-      throw new Error(`OpenCode v${DOWNLOAD_VERSION} could not be installed automatically. ` +
+      log.error('OPENCODE', `Failed to download OpenCode v${OPENCODE_VERSION}: ${error.message}`);
+      throw new Error(`OpenCode v${OPENCODE_VERSION} could not be installed automatically. ` +
         `Please place opencode.exe next to your project folder or in the app's resources directory, then restart.`);
     }
   }
@@ -222,141 +213,6 @@ function findSyncRoExecutable(projectPath) {
   return 'syncro';
 }
 
-/** Find opencode.exe in the project dir, packaged resources, or the
- *  parent of the project dir. Returns an object with the absolute path
- *  and the source label, or null if no bundled copy is found. PATH is
- *  intentionally NOT consulted — see startOpencode() for the CLI-free
- *  resolution policy. */
-function findOpencodeExecutable(projectPath) {
-  // 1) Bundled alongside the project (dev or user-data copy)
-  const localOpencode = path.join(projectPath, 'opencode.exe');
-  if (fs.existsSync(localOpencode)) {
-    return { path: localOpencode, source: 'project' };
-  }
-
-  // 2) Packaged as an extraResource (NSIS / portable → resources/opencode.exe)
-  if (process.resourcesPath) {
-    const resourcesOpencode = path.join(process.resourcesPath, 'opencode.exe');
-    if (fs.existsSync(resourcesOpencode)) {
-      return { path: resourcesOpencode, source: 'resources' };
-    }
-  }
-
-  // 3) Parent directory (portable exe sitting next to the project folder)
-  const parentOpencode = path.join(path.dirname(projectPath), 'opencode.exe');
-  if (fs.existsSync(parentOpencode)) {
-    return { path: parentOpencode, source: 'parent' };
-  }
-
-  // No bundled copy — caller will trigger a download into projectPath.
-  return null;
-}
-
-/** Check if opencode version is EXACTLY v1.17.18.
- *  We do not accept any other version on purpose:
- *  - Different minor versions can change SSE event payload schemas
- *    (we just verified this against the OpenAPI spec).
- *  - Pinning to a single known-good build eliminates session drift
- *    between RoBo and the bundled OpenCode.
- *  - Any "newer" version found in the wild gets replaced by our
- *    v1.17.18 download — there's no situation where we'd want to
- *    honor a different version. */
-async function checkOpencodeVersion(opencodePath) {
-  try {
-    const result = await execAsync(`"${opencodePath}" -v`, 5000);
-    const versionMatch = result.match(/v?(\d+\.\d+\.\d+)/);
-    if (!versionMatch) {
-      log.warn('OPENCODE', `Could not parse version from: ${result}`);
-      return false;
-    }
-    const version = versionMatch[1];
-    log.info('OPENCODE', `Found OpenCode version: ${version}`);
-
-    // STRICT equality — not ">=". A 1.17.19 or 1.18.0 build will fail
-    // this check and trigger a re-download to v1.17.18.
-    const TARGET_VERSION = '1.17.18';
-    if (version !== TARGET_VERSION) {
-      log.warn('OPENCODE', `OpenCode version ${version} does not match required ${TARGET_VERSION} (strict pin)`);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    log.warn('OPENCODE', `Failed to check OpenCode version: ${error.message}`);
-    return false;
-  }
-}
-
-/** Download OpenCode v1.17.18 as a .zip and extract opencode.exe.
- *  The version is a constant on purpose — we pin to a known-good build
- *  so RoBo and the CLI can never drift. The destination is always
- *  <projectPath>/opencode.exe. */
-function downloadWithRedirect(url, zipPath) {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(zipPath);
-    function follow(currentUrl) {
-      https.get(currentUrl, (response) => {
-        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-          follow(response.headers.location);
-          return;
-        }
-        if (response.statusCode !== 200) {
-          file.close(() => fs.unlink(zipPath, () => {}));
-          reject(new Error(`Download failed with status ${response.statusCode}`));
-          return;
-        }
-        const totalSize = parseInt(response.headers['content-length'], 10);
-        let downloadedSize = 0;
-        response.on('data', (chunk) => {
-          downloadedSize += chunk.length;
-          if (totalSize) {
-            const progress = Math.round((downloadedSize / totalSize) * 100);
-            if (progress % 10 === 0) log.info('OPENCODE', `Download progress: ${progress}%`);
-          }
-        });
-        response.pipe(file);
-        file.on('finish', () => file.close(() => resolve()));
-        file.on('error', reject);
-      }).on('error', reject);
-    }
-    follow(url);
-  });
-}
-
-async function downloadOpencodeBinary(projectPath) {
-  const VERSION = '1.17.18';
-  const downloadUrl = `https://github.com/anomalyco/opencode/releases/download/v${VERSION}/opencode-windows-x64.zip`;
-  const targetPath = path.join(projectPath, 'opencode.exe');
-  const zipPath = path.join(projectPath, 'opencode-temp.zip');
-
-  log.info('OPENCODE', `Downloading OpenCode v${VERSION} from ${downloadUrl}`);
-
-  try {
-    await downloadWithRedirect(downloadUrl, zipPath);
-    log.info('OPENCODE', `Download complete, extracting opencode.exe...`);
-
-    const dir = await unzipper.Open.file(zipPath);
-    const exe = dir.files.find(f => f.path === 'opencode.exe');
-    if (!exe) {
-      throw new Error('opencode.exe not found inside zip');
-    }
-
-    await new Promise((resolve, reject) => {
-      exe.stream()
-        .pipe(fs.createWriteStream(targetPath))
-        .on('finish', resolve)
-        .on('error', reject);
-    });
-
-    fs.unlinkSync(zipPath);
-    log.info('OPENCODE', `OpenCode v${VERSION} installed at ${targetPath}`);
-    return targetPath;
-  } catch (error) {
-    fs.unlink(zipPath, () => {});
-    throw error;
-  }
-}
-
 /** Spawn the SyncRo process and resolve when it starts listening. */
 async function startSyncRo(instance) {
   const { project, ports } = instance;
@@ -458,132 +314,20 @@ async function startSyncRo(instance) {
   });
 }
 
-/** Kill any process already listening on the given ports. */
-async function killProcessesOnPorts(syncroPort, opencodePort) {
-  for (const port of [syncroPort, opencodePort]) {
-    try {
-      if (process.platform === 'win32') {
-        const result = await execAsync(`powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess"`, 5000);
-        if (result) {
-          const pids = result.split(/\s+/).filter(p => p.trim());
-          for (const pid of pids) {
-            const pidNum = parseInt(pid);
-            if (pidNum && pidNum > 0 && pidNum !== 0) {
-              try { await execAsync(`taskkill /PID ${pidNum} /F`, 3000); } catch {}
-            }
-          }
-        }
-      } else {
-        const result = await execAsync(`lsof -ti :${port}`, 5000);
-        if (result) {
-          const pids = result.split('\n').filter(p => p.trim());
-          for (const pid of pids) {
-            try { await execAsync(`kill -9 ${pid.trim()}`, 3000); } catch {}
-          }
-        }
-      }
-    } catch {}
-  }
-  await sleep(500);
-}
-
-/** Promise-based sleep. */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/** Check whether a PID is still alive (running). */
-function isPidAlive(pid) {
-  if (!pid || pid <= 0) return false;
-  try {
-    if (process.platform === 'win32') {
-      const out = require('child_process').execSync(
-        `tasklist /FI "PID eq ${pid}" /NH`,
-        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 2000 }
-      );
-      return out.trim().length > 0 && !/no tasks are running/i.test(out);
-    } else {
-      process.kill(pid, 0);
-      return true;
-    }
-  } catch {
-    return false;
-  }
-}
-
-/** Kill a process gracefully first (so cleanup runs and exit code is clean),
- *  then force-kill only if it survives the grace period.
- *  Windows: `taskkill /PID` (WM_CLOSE / CTRL_C) without /F is a polite request.
- *  POSIX:   SIGTERM. */
-async function gracefulKill(pid, graceMs = 1500) {
-  if (!pid || !isPidAlive(pid)) return;
-  try {
-    if (process.platform === 'win32') {
-      // /PID without /F sends a graceful terminate. We intentionally do NOT
-      // use /T here for the first pass so the main process can cleanly
-      // reap its own children; the follow-up force pass uses /F /T.
-      await execAsync(`taskkill /PID ${pid}`, 3000);
-    } else {
-      try { process.kill(-pid, 'SIGTERM'); } catch {}
-      try { process.kill(pid, 'SIGTERM'); } catch {}
-    }
-  } catch {
-    // Polite kill failed (e.g. permission denied) — skip grace and fall
-    // through to force. Nothing to log, the force pass is coming anyway.
-  }
-  // Wait up to `graceMs` for the process to exit on its own.
-  const start = Date.now();
-  while (Date.now() - start < graceMs && isPidAlive(pid)) {
-    await sleep(100);
-  }
-}
-
-/** Kill a process AND its entire child tree, gracefully-then-forcefully.
- *  Windows:
- *    Pass 1: taskkill /PID (no /F) = graceful terminate request.
- *            Wait ~1.5s for clean exit.
- *    Pass 2: taskkill /F /T = hard terminate tree (exit codes 1 prevention
- *            gone — most processes will report clean 0 from pass 1).
- *  POSIX:
- *    Pass 1: SIGTERM to process group + pid, wait.
- *    Pass 2: SIGKILL to process group + pid. */
-async function killProcessTree(pid) {
-  if (!pid) return;
-  try {
-    if (process.platform === 'win32') {
-      await gracefulKill(pid, 1500);
-      if (isPidAlive(pid)) {
-        // Still running after grace — aggressive tree kill.
-        try { await execAsync(`taskkill /F /T /PID ${pid}`, 5000); } catch {}
-      }
-    } else {
-      await gracefulKill(pid, 1500);
-      try { process.kill(-pid, 'SIGKILL'); } catch {}
-      try { process.kill(pid, 'SIGKILL'); } catch {}
-    }
-  } catch {}
-}
-
-/** Safety net: kill every process whose image name matches one of `names`.
- *  Used after a tree-kill because some grandchildren (notably Bun runtime
- *  workers spawned by opencode.exe) can reparent to the system root and
- *  escape `taskkill /T`. Matching by image name catches them regardless of
- *  parent PID. Each call is best-effort and never throws. */
-async function killByImageName(names) {
-  for (const name of names) {
-    if (!name) continue;
-    try {
-      if (process.platform === 'win32') {
-        // `/F /T` is the most aggressive combo: force-kill AND walk the tree.
-        // Exit codes 0/128 are success; 128/1 mean "no match" which is fine.
-        await execAsync(`taskkill /F /T /IM "${name}"`, 5000);
-      } else {
-        await execAsync(`pkill -9 -f "${name}"`, 5000);
-      }
-    } catch {
-      // No matching process → nothing to kill. Swallow.
-    }
-  }
-}
-
-module.exports = { startOpencode, startSyncRo, findSyncRoExecutable, findOpencodeExecutable, checkOpencodeVersion, downloadOpencodeBinary, killProcessesOnPorts, killProcessTree, killByImageName, gracefulKill, isPidAlive, sleep };
+// Re-export the full process-manager surface so existing callers
+// (instance-manager.js) keep their single require('./process-manager').
+module.exports = {
+  startOpencode,
+  startSyncRo,
+  findSyncRoExecutable,
+  findOpencodeExecutable,
+  checkOpencodeVersion,
+  downloadOpencodeBinary,
+  killProcessesOnPorts,
+  killProcessTree,
+  killByImageName,
+  gracefulKill,
+  isPidAlive,
+  sleep,
+  execAsync,
+};

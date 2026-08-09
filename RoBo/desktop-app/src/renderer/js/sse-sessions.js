@@ -1,124 +1,16 @@
-/** Handle message part updates: show thinking indicators, track text parts, update todos. */
-function handlePartUpdate(properties) {
-  if (!properties || isCompacting) return;
-  const { part, sessionID } = properties;
-  if (!part || sessionID !== window.App.currentSession) return;
-
-  if (
-    (part.type === "reasoning" ||
-      part.type === "step-start" ||
-      part.type === "text") &&
-    !window.App.isProcessing
-  ) {
-    window.Chat.setStopMode(true);
-  }
-
-  if (part.type === "reasoning") {
-    window.Chain.upsertReasoning(part);
-  } else if (part.type === "step-start") {
-    window.Chain.showPlaceholder("Thinking");
-    window.Chat.resetStreamingAccum();
-  } else if (part.type === "text") {
-    if (part.id !== activeTextPartID) {
-      window.Chat.resetStreamingAccum();
-    }
-    activeTextPartID = part.id;
-    // Only drop the placeholder when real content has arrived. The text
-    // part is created empty BEFORE the model streams anything — hiding
-    // the placeholder here leaves a dead gap until reasoning/text start.
-    if (part.text && window.Chain && window.Chain.hidePlaceholder) {
-      window.Chain.hidePlaceholder();
-    }
-  } else if (part.type === "step-finish") {
-    activeTextPartID = null;
-    window.Chat.removeStreamingCursor();
-  } else if (part.type === "tool") {
-    window.Chain.upsertTool(part);
-    if (part.tool === "todowrite" && part.state && part.state.input) {
-      const todos = part.state.input.todos;
-      if (Array.isArray(todos)) {
-        window.RightPanel.updateTodoList(todos);
-      }
-    }
-  } else if (part.type === "retry") {
-    const attempt = part.attempt || 0;
-    const errMsg =
-      (part.error && (part.error.message || part.error.detail)) || "retrying";
-    window.Chain.addMarker("retry", `Retry ${attempt} \u2014 ${errMsg}`);
-  } else if (part.type === "compaction") {
-    window.Chain.addMarker("compaction", "Context compacted \u2014 continuing");
-  }
-}
-
-/** Handle streaming text deltas - route by part ID: reasoning deltas go to
- *  the Chain (text and reasoning share the field name "text"), everything
- *  else appends to the current message. Tool output ("output" field) goes
- *  to the bash card. */
-function handlePartDelta(properties) {
-  if (!properties || isCompacting) return;
-  const { field, delta, sessionID, partID } = properties;
-  if (sessionID !== window.App.currentSession) return;
-
-  if (field === "text" && delta) {
-    if (partID && window.Chain && window.Chain.isReasoningPart(partID)) {
-      window.Chain.appendReasoningDelta(partID, delta);
-    } else if (partID === activeTextPartID) {
-      // Real text is flowing now — the placeholder's job is done.
-      if (window.Chain && window.Chain.hidePlaceholder) {
-        window.Chain.hidePlaceholder();
-      }
-      window.Chat.appendStreamingText(delta);
-    }
-  } else if (field === "output" && delta) {
-    if (partID && window.Chain && window.Chain.appendToolOutputDelta) {
-      window.Chain.appendToolOutputDelta(partID, delta);
-    }
-  }
-}
-
-/** Reset streaming when a completed message update arrives. */
-function handleMessageUpdated(properties) {
-  if (!properties) return;
-  // Defensive sessionID filter: even though sse-core.js already routes via
-  // isCurrent, an out-of-band message.updated for another session would
-  // otherwise drop our stop-button + cursor into the wrong chat.
-  const eventSession = properties.sessionID || properties.id;
-  if (eventSession && eventSession !== window.App.currentSession) return;
-  const info = properties.info || properties;
-  if (info.time && info.time.completed) {
-    // If the user pressed Stop while this message was streaming, surface that
-    // in the chat so the empty tail doesn't look like a successful response.
-    if (window.App.abortedByUser) {
-      window.App.abortedByUser = false;
-      window.App.sessionBusy = false;
-      if (window.Chain && window.Chain.addMarker) {
-        window.Chain.addMarker("stop", "Generation stopped by user");
-      }
-    }
-    window.Chat.finalizeStreaming();
-    // One message completing is NOT the end of the generation: opencode
-    // completes the assistant message at every step boundary (e.g. after
-    // each tool round). Dropping stop-mode here would flip the button to
-    // "send" between steps, then back to "stop" when the next step's
-    // first part lands. Only when the session is no longer busy (idle /
-    // error / abort) may the send button return.
-    // Exception: a question tool can end the model's turn while the
-    // session stays busy waiting for the answer — that completion must
-    // NOT drop the stop button (the generation continues after respond).
-    if (window.App.questionPending) return;
-    const role = (info && info.role) || (properties.role);
-    if ((!role || role === "assistant") && !window.App.sessionBusy) {
-      // The message is done: no more deltas should attach to it. Null the
-      // active part id so a straggler delta can't append into the
-      // finalized bubble.
-      activeTextPartID = null;
-      if (window.Chat && window.Chat.setStopMode) {
-        window.Chat.setStopMode(false);
-      }
-      window.Chat.hideAllStatusIndicators();
-    }
-  }
-}
+/* SSE handlers — session lifecycle & session-list sync.
+ * Sibling of sse-parts.js (which handles message parts and the interactive
+ * turn flow). All functions stay in the global scope, exactly like the old
+ * single sse-handlers.js, so the cross-file calls from sse-core.js keep
+ * working: it only routes event types to these handlers at runtime.
+ *
+ * Session-level responsibilities:
+ *   - session.status / session.idle / session.error  (busy state, stop button)
+ *   - session.compacted + session.next.compaction.*  (compaction rounds)
+ *   - session.next.revert.*                          (revert staging)
+ *   - session.updated / message.removed              (session & message sync)
+ *   - session.created / session.deleted (legacy, kept for safety)
+ *   - session.diff / file.edited                     (pass-through events) */
 
 /** Handle session status changes: busy, compacting, error, or idle. */
 function handleSessionStatus(properties) {
@@ -166,179 +58,6 @@ function handleSessionStatus(properties) {
     // idempotent — finalizeStreaming, setStopMode, hideAllStatusIndicators
     // and message re-fetch are all safe to run again.
     handleSessionIdle(properties);
-  }
-}
-
-/** Handle the real "session.compacted" event fired when compaction finishes.
- *  OpenCode 1.17.18 OpenAPI spec: payload is { sessionID } only. */
-function handleSessionCompacted(properties) {
-  const eventSession = properties && (properties.sessionID || properties.id);
-  if (eventSession && eventSession !== window.App.currentSession) return;
-
-  isCompacting = false;
-  window.Chain.finishMarker("compaction", "Context compacted \u2014 continuing");
-
-  const sessionToRefresh = window.App.currentSession;
-  if (!sessionToRefresh) return;
-  // A full rebuild would wipe the in-flight streaming bubble mid-turn —
-  // skip it while the model is still replying; deltas continue the bubble.
-  if (document.querySelector(".ai-message-streaming")) return;
-  setTimeout(() => {
-      if (window.App.currentSession !== sessionToRefresh) return;
-      window.electronAPI.session
-        .messages(sessionToRefresh)
-        .then((messages) => {
-          if (window.App.currentSession !== sessionToRefresh) return;
-          window.Chat.renderMessages(messages);
-        })
-        .catch(() => {});
-    }, 100);
-}
-
-/** OpenCode 1.17+ new compaction API: a compaction round has started. */
-function handleNextCompactionStarted(properties) {
-  isCompacting = true;
-  window.Chain.addMarker("compaction-active", "Compacting context...");
-  // Pause streaming so the in-flight assistant bubble doesn't fight
-  // with the compaction summary.
-  if (window.SSE && typeof window.SSE.setCompacting === "function") {
-    window.SSE.setCompacting(true);
-  }
-}
-
-/** OpenCode 1.17+ new compaction API: streaming summary text. We just
- *  stash the most recent text on window.App for the .ended event. */
-function handleNextCompactionDelta(properties) {
-  if (!properties) return;
-  if (!window.App.lastCompaction) {
-    window.App.lastCompaction = { text: "", startedAt: Date.now() };
-  }
-  if (typeof properties.text === "string") {
-    window.App.lastCompaction.text += properties.text;
-  }
-}
-
-/** OpenCode 1.17+ new compaction API: compaction round finished. */
-function handleNextCompactionEnded(properties) {
-  isCompacting = false;
-  if (window.SSE && typeof window.SSE.setCompacting === "function") {
-    window.SSE.setCompacting(false);
-  }
-  window.Chain.finishMarker("compaction", "Context compacted \u2014 continuing");
-
-  const sessionToRefresh = window.App.currentSession;
-  if (!sessionToRefresh) return;
-  // Same live-stream guard as handleSessionCompacted.
-  if (document.querySelector(".ai-message-streaming")) return;
-  setTimeout(() => {
-    if (window.App.currentSession !== sessionToRefresh) return;
-    window.electronAPI.session
-      .messages(sessionToRefresh)
-      .then((messages) => {
-        if (window.App.currentSession !== sessionToRefresh) return;
-        window.Chat.renderMessages(messages);
-      })
-      .catch(() => {});
-  }, 100);
-}
-
-/** OpenCode 1.17+ new revert API. The .staged / .cleared / .committed
- *  events let the UI reflect the new ephemeral "revert" state without
- *  having to poll /session/{id}. The renderer simply re-fetches the
- *  session list so the chat shows the correct snapshot. */
-function handleNextRevertEvent(data) {
-  const t = data && data.type;
-  if (!t) return;
-  if (t === "session.next.revert.staged") {
-    window.App.lastRevert = data.properties && data.properties.revert;
-  } else if (t === "session.next.revert.cleared") {
-    window.App.lastRevert = null;
-  } else if (t === "session.next.revert.committed") {
-    window.App.lastRevert = null;
-  }
-  // staged -> cleared -> committed arrive back-to-back; collapse the three
-  // full-history rebuilds into a single trailing refresh.
-  if (window.App.revertRefreshTimer) clearTimeout(window.App.revertRefreshTimer);
-  window.App.revertRefreshTimer = setTimeout(() => {
-    window.App.revertRefreshTimer = null;
-    // Trigger a re-fetch of the session so any revert-bound messages
-    // appear/disappear from the chat.
-    const sessionToRefresh = window.App.currentSession;
-    if (!sessionToRefresh) return;
-    window.electronAPI.session
-      .messages(sessionToRefresh)
-      .then((messages) => {
-        if (window.App.currentSession !== sessionToRefresh) return;
-        window.Chat.renderMessages(messages);
-      })
-      .catch(() => {});
-  }, 150);
-}
-
-/** OpenCode 1.17+ new question API. Re-shape v2 payload and re-use the
- *  existing v1 modal helper. */
-function handleQuestionV2Asked(properties) {
-  if (!properties) return;
-  // v2 payload: { id, sessionID, questions: QuestionV2Info[] }
-  // v1 modal expects: { id, sessionID, questions: QuestionInfo[] }
-  const shaped = {
-    id: properties.id,
-    sessionID: properties.sessionID,
-    questions: (properties.questions || []).map((q) => ({
-      question: q.question || q.header || "",
-      header: q.header,
-      options: (q.options || []).map((o) =>
-        typeof o === "string" ? o : o.label || o.value || "",
-      ),
-    })),
-    tool: properties.tool,
-  };
-  if (window.Modals && window.Modals.showQuestionModal) {
-    window.Modals.showQuestionModal(shaped);
-  }
-}
-
-/** OpenCode 1.17+ new permission API. Re-shape v2 payload into the v1
- *  shape the RoBo UI already understands. */
-function handlePermissionV2Asked(properties) {
-  if (!properties) return;
-  const shaped = {
-    id: properties.id,
-    sessionID: properties.sessionID,
-    permission: properties.action,
-    patterns: properties.resources || [],
-    metadata: properties.metadata || {},
-    always: properties.save || [],
-    tool: {
-      messageID: properties.metadata && properties.metadata.messageID,
-      callID: properties.metadata && properties.metadata.callID,
-    },
-  };
-  // Reuse the existing v1 handler.
-  handlePermissionAsked(shaped);
-}
-
-/** A specific part was removed (e.g. cancelled tool, retracted text). */
-function handleMessagePartRemoved(properties) {
-  if (!properties) return;
-  const partID = properties.partID || properties.id;
-  if (!partID) return;
-  if (window.Chain && window.Chain.removePart) {
-    window.Chain.removePart(partID);
-  }
-  const container = Utils.$("chatArea");
-  if (!container) return;
-  // Any element tagged with data-part-id matching the removed part is
-  // orphaned and should be cleaned up.
-  const orphan = container.querySelector(`[data-part-id="${partID}"]`);
-  if (orphan) orphan.remove();
-  // If the active streaming part was removed, reset the accumulators
-  // so the next text delta starts a fresh bubble.
-  if (partID === activeTextPartID) {
-    activeTextPartID = null;
-    if (window.Chat && window.Chat.resetStreamingAccum) {
-      window.Chat.resetStreamingAccum();
-    }
   }
 }
 
@@ -515,40 +234,110 @@ function handleSessionError(properties) {
   }
 }
 
-/** Handle permission requests (currently a no-op placeholder). */
-function handlePermissionAsked(properties) {
-  if (!properties) return;
-  const sessionID = properties.sessionID || properties.id;
-  if (sessionID && sessionID !== window.App.currentSession) return;
-  // OpenCode sometimes sends a bare "permission.asked" with no detail (e.g.
-  // when the request was already auto-allowed). Anything more meaningful
-  // gets stored on window.App so a future permission modal can pick it up.
-  window.App.lastPermissionRequest = properties;
-  document.dispatchEvent(
-    new CustomEvent("robo:permission-asked", { detail: properties }),
-  );
-}
-/** Update the todo list in the right panel when the backend pushes changes. */
-function handleTodoUpdated(properties) {
-  if (!properties) return;
-  const eventSession = properties.sessionID || properties.id;
+/** Handle the real "session.compacted" event fired when compaction finishes.
+ *  OpenCode 1.17.18 OpenAPI spec: payload is { sessionID } only. */
+function handleSessionCompacted(properties) {
+  const eventSession = properties && (properties.sessionID || properties.id);
   if (eventSession && eventSession !== window.App.currentSession) return;
-  const todos = properties.todos || properties.items || properties;
-  if (Array.isArray(todos)) {
-    window.RightPanel.updateTodoList(todos);
-    // Auto-open todo list when AI creates/updates todos
-    const todoList = Utils.$("todoList");
-    const todoHeader = Utils.$("todoHeader");
-    if (
-      todoList &&
-      !todoList.classList.contains("active") &&
-      todos.length > 0
-    ) {
-      todoList.classList.add("active");
-      const arrow = todoHeader?.querySelector(".todo-arrow");
-      if (arrow) arrow.textContent = "\u25BC";
-    }
+
+  isCompacting = false;
+  window.Chain.finishMarker("compaction", "Context compacted \u2014 continuing");
+
+  const sessionToRefresh = window.App.currentSession;
+  if (!sessionToRefresh) return;
+  // A full rebuild would wipe the in-flight streaming bubble mid-turn —
+  // skip it while the model is still replying; deltas continue the bubble.
+  if (document.querySelector(".ai-message-streaming")) return;
+  setTimeout(() => {
+      if (window.App.currentSession !== sessionToRefresh) return;
+      window.electronAPI.session
+        .messages(sessionToRefresh)
+        .then((messages) => {
+          if (window.App.currentSession !== sessionToRefresh) return;
+          window.Chat.renderMessages(messages);
+        })
+        .catch(() => {});
+    }, 100);
+}
+
+/** OpenCode 1.17+ new compaction API: a compaction round has started. */
+function handleNextCompactionStarted(properties) {
+  isCompacting = true;
+  window.Chain.addMarker("compaction-active", "Compacting context...");
+  // Pause streaming so the in-flight assistant bubble doesn't fight
+  // with the compaction summary.
+  if (window.SSE && typeof window.SSE.setCompacting === "function") {
+    window.SSE.setCompacting(true);
   }
+}
+
+/** OpenCode 1.17+ new compaction API: streaming summary text. We just
+ *  stash the most recent text on window.App for the .ended event. */
+function handleNextCompactionDelta(properties) {
+  if (!properties) return;
+  if (!window.App.lastCompaction) {
+    window.App.lastCompaction = { text: "", startedAt: Date.now() };
+  }
+  if (typeof properties.text === "string") {
+    window.App.lastCompaction.text += properties.text;
+  }
+}
+
+/** OpenCode 1.17+ new compaction API: compaction round finished. */
+function handleNextCompactionEnded(properties) {
+  isCompacting = false;
+  if (window.SSE && typeof window.SSE.setCompacting === "function") {
+    window.SSE.setCompacting(false);
+  }
+  window.Chain.finishMarker("compaction", "Context compacted \u2014 continuing");
+
+  const sessionToRefresh = window.App.currentSession;
+  if (!sessionToRefresh) return;
+  // Same live-stream guard as handleSessionCompacted.
+  if (document.querySelector(".ai-message-streaming")) return;
+  setTimeout(() => {
+    if (window.App.currentSession !== sessionToRefresh) return;
+    window.electronAPI.session
+      .messages(sessionToRefresh)
+      .then((messages) => {
+        if (window.App.currentSession !== sessionToRefresh) return;
+        window.Chat.renderMessages(messages);
+      })
+      .catch(() => {});
+  }, 100);
+}
+
+/** OpenCode 1.17+ new revert API. The .staged / .cleared / .committed
+ *  events let the UI reflect the new ephemeral "revert" state without
+ *  having to poll /session/{id}. The renderer simply re-fetches the
+ *  session list so the chat shows the correct snapshot. */
+function handleNextRevertEvent(data) {
+  const t = data && data.type;
+  if (!t) return;
+  if (t === "session.next.revert.staged") {
+    window.App.lastRevert = data.properties && data.properties.revert;
+  } else if (t === "session.next.revert.cleared") {
+    window.App.lastRevert = null;
+  } else if (t === "session.next.revert.committed") {
+    window.App.lastRevert = null;
+  }
+  // staged -> cleared -> committed arrive back-to-back; collapse the three
+  // full-history rebuilds into a single trailing refresh.
+  if (window.App.revertRefreshTimer) clearTimeout(window.App.revertRefreshTimer);
+  window.App.revertRefreshTimer = setTimeout(() => {
+    window.App.revertRefreshTimer = null;
+    // Trigger a re-fetch of the session so any revert-bound messages
+    // appear/disappear from the chat.
+    const sessionToRefresh = window.App.currentSession;
+    if (!sessionToRefresh) return;
+    window.electronAPI.session
+      .messages(sessionToRefresh)
+      .then((messages) => {
+        if (window.App.currentSession !== sessionToRefresh) return;
+        window.Chat.renderMessages(messages);
+      })
+      .catch(() => {});
+  }, 150);
 }
 
 /** Update session title in the sidebar and right panel when renamed by the backend. */
@@ -602,6 +391,8 @@ function handleMessageRemoved(properties) {
  * A new session was created externally (e.g. via the `opencode` CLI or by
  * the SyncRo plugin). Refresh the sidebar so the new card appears without
  * requiring a manual reload.
+ * NOTE: opencode v1.17.18 does NOT emit session.created as a standalone
+ * event per its OpenAPI spec — this handler is kept as a safety net.
  */
 function handleSessionCreated(properties) {
   if (!properties) return;
@@ -625,6 +416,7 @@ function handleSessionCreated(properties) {
 /**
  * A session was deleted externally. Remove it from the local list and
  * clear the chat if the active session is the one that got removed.
+ * NOTE: same as handleSessionCreated — kept as a safety net for v1.17.18.
  */
 function handleSessionDeleted(properties) {
   if (!properties) return;
