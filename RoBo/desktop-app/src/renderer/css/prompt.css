@@ -1,25 +1,45 @@
 /* ── Prompt ── */
-.prompt-area { padding: 16px 36px 32px 36px; position: relative; z-index: 10; }
+.prompt-area { padding: 16px 36px 28px 36px; position: relative; z-index: 10;
+  /* Sits in the content column but slightly WIDER than the messages above
+     (the old frame width + 48px): the composer's edges stick out ~24px on
+     each side of the text column, which reads better than a flush width.
+     Explicit width = 100% + auto margins CENTER it; without the width the
+     flex item would collapse to fit-content (the prompt box once shrunk to
+     its intrinsic input width). */
+  width: 100%;
+  max-width: calc(100vw - 340px - 366px + 48px);
+  margin: 0 auto; }
 
 .prompt-box {
   display: flex; flex-direction: column;
   background: var(--bg-panel);
   border: 1px solid var(--border-color);
-  border-radius: 14px; padding: 0 12px 0 16px; gap: 0; min-height: 90px;
+  border-radius: 14px; padding: 0 12px 0 16px; gap: 0; min-height: 117px;
   box-shadow: 0 2px 12px var(--shadow-color), 0 1px 2px var(--shadow-color);
   position: relative;
 }
 
 .prompt-top {
-  display: flex; align-items: center; flex: 1; min-height: 48px;
+  display: flex; align-items: stretch; flex: 1; min-height: 48px;
   padding-right: 50px;
 }
 
 .prompt-input {
   flex: 1; border: none; outline: none; background: transparent;
   font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
-  color: var(--text-primary); padding: 14px 0 0 0; line-height: 1.4;
+  color: var(--text-primary); padding: 10px 0 8px 0; line-height: 1.4;
+  /* Multi-line: wrap instead of one endless line, scroll INSIDE the box
+     when the text outgrows it. The scrollbar is hidden (keyboard keeps
+     following the caret via the input listener; the mouse can still
+     scroll).  */
+  resize: none;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  scrollbar-width: none;
 }
+.prompt-input::-webkit-scrollbar { width: 0; display: none; }
 
 .prompt-input::placeholder { color: var(--text-muted); font-weight: 500; }
 

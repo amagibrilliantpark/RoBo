@@ -243,6 +243,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Multi-line prompt: while typing, keep the visible lines pinned to the
+  // freshest text (the view never lags behind the caret when the message
+  // outgrows the box). Only input moves it — manual mouse scroll is free.
+  promptInput.addEventListener('input', () => {
+    promptInput.scrollTop = promptInput.scrollHeight;
+  });
+
   // ── Mode selector (Build/Plan) ──
   const modeSelector = Utils.$('modeSelector');
   const modePopup = Utils.$('modePopup');

@@ -392,6 +392,8 @@
             </div>
 
             <main class="main">
+                <!-- Session name header (top-left of the workspace) -->
+                <div class="rp-session-name" id="rpSessionName">New Chat</div>
                 <!-- Center Search Modal (hidden by default) -->
                 <div class="center-search-modal hidden" id="centerSearchModal">
                     <div
@@ -537,11 +539,12 @@
                         <!-- Normal prompt box -->
                         <div class="prompt-box">
                             <div class="prompt-top">
-                                <input
+                                <textarea
                                     class="prompt-input"
-                                    type="text"
                                     placeholder="Reply.."
-                                />
+                                    rows="1"
+                                    wrap="soft"
+                                ></textarea>
                             </div>
                             <button class="btn-send" title="Send">
                                 <svg
@@ -630,7 +633,6 @@
             </main>
 
             <aside class="right-panel">
-                <div class="rp-session-name" id="rpSessionName">New Chat</div>
                 <div class="rp-syncro-info" id="rpSyncRoInfo">
                     <svg
                         class="rp-info-icon"
