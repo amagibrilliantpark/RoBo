@@ -1,27 +1,15 @@
-/* ── Right Panel ── */
-:root {
-  --rp-grad-1: rgba(190,218,250,0.70);
-  --rp-grad-2: rgba(175,210,248,0.55);
-  --rp-grad-3: rgba(200,222,252,0.65);
-}
+/* ── Right Panel strip ──
+   Visually removed: the panel itself is hidden (its 270px slot is reserved
+   by .main's right inset, so the strip stays as blank app background).
+   Its elements (session name, syncro info, todo list) stay fully intact in
+   code; unhide by setting .right-panel display back to flex. */
 .right-panel {
-  width: 270px; height: 100vh; flex-shrink: 0;
-  background: linear-gradient(180deg, var(--rp-grad-1) 0%, var(--rp-grad-2) 50%, var(--rp-grad-3) 100%);
-  border-left: 1px solid var(--border-color);
-  position: fixed; right: 0; top: 0; z-index: 30;
-  display: flex; flex-direction: column;
-  overflow-y: auto;
+  display: none;
 }
 
-/* Dark mode: only grid, no gradient */
+/* Dark mode: nothing special — strip stays transparent */
 body[data-theme="dark"] .right-panel {
-  background: 
-    linear-gradient(var(--grid-color) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
-  background-color: var(--bg-primary);
-  background-size: 60px 60px, 60px 60px;
-  background-position: -1px -1px;
-  box-shadow: none;
+  background: transparent;
 }
 .right-panel::-webkit-scrollbar { width: 3px; }
 .right-panel::-webkit-scrollbar-track { background: transparent; }

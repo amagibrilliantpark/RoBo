@@ -65,7 +65,9 @@ async function sendMessage() {
 
     // Cover the pre-step-start gap in the chain of thoughts: nothing has
     // streamed yet, so show the placeholder until the first part lands.
-    if (window.Chain) window.Chain.showPlaceholder("Thinking");
+    // "Working" (not "Thinking"): the row also covers LLM-call latency and
+    // tool-await stretches, while "Thinking" belongs to the reasoning rows.
+    if (window.Chain) window.Chain.showPlaceholder("Working");
 
     const model = window.App.currentModel;
     const agent = window.App.currentAgent;

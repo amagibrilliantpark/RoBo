@@ -26,7 +26,7 @@ function registerMiscHandlers(instanceManager, sessionManager, project) {
           });
         } else {
           mainWindow.setTitleBarOverlay({
-            color: "#d4e7fb",
+            color: "#f5f7fa",
             symbolColor: "#18283a",
             height: 22,
           });

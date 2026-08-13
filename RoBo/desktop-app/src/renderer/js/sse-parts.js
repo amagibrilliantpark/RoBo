@@ -28,7 +28,7 @@ function handlePartUpdate(properties) {
   if (part.type === "reasoning") {
     window.Chain.upsertReasoning(part);
   } else if (part.type === "step-start") {
-    window.Chain.showPlaceholder("Thinking");
+    window.Chain.showPlaceholder("Working");
     window.Chat.resetStreamingAccum();
   } else if (part.type === "text") {
     if (part.id !== activeTextPartID) {
@@ -45,7 +45,18 @@ function handlePartUpdate(properties) {
     activeTextPartID = null;
     window.Chat.removeStreamingCursor();
   } else if (part.type === "tool") {
+    // A real tool call ends whatever "thinking" was in flight — retire the
+    // placeholder so the card lands first, then bring the placeholder back
+    // to cover the model's next call. The gap between tool and the next
+    // step-start is pure LLM latency; without this the chain sits dead
+    // there for a second or two.
+    if (window.Chain && window.Chain.hidePlaceholder) {
+      window.Chain.hidePlaceholder();
+    }
     window.Chain.upsertTool(part);
+    if (window.Chain && window.Chain.showPlaceholder) {
+      window.Chain.showPlaceholder("Working");
+    }
     if (part.tool === "todowrite" && part.state && part.state.input) {
       const todos = part.state.input.todos;
       if (Array.isArray(todos)) {

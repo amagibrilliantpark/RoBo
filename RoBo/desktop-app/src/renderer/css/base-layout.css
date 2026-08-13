@@ -16,10 +16,9 @@ body { background-color: var(--bg-primary); }
 /* ── Sidebar ── */
 .sidebar {
   width: 340px; height: 100vh; flex-shrink: 0;
-  background: var(--bg-sidebar);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border-right: 1px solid var(--border-sidebar);
-  box-shadow: 2px 0 20px var(--shadow-color);
+  /* Transparent: the app background flows through — no hard seam between
+     sidebar, top gutter and the (hidden) right strip. The only line in the
+     UI is the floating workspace's own border. */
   display: flex; flex-direction: column;
   position: fixed; left: 0; top: 0; z-index: 30;
 }

@@ -1,10 +1,25 @@
-/* ── Main ── */
-.main { margin-left: 340px; margin-right: 270px; width: calc(100vw - 340px - 270px); height: 100vh; display: flex; flex-direction: column; position: relative; }
+/* ── Main: the floating inset workspace surface.
+   Left edge flush with the sidebar's right edge (seam at 340px).
+   Top gutter 48px (below the sidebar icon row), 16px float gap before the
+   hidden 270px right strip, 6px bottom inset. The workspace owns the only
+   border in the UI; the sidebar is backgroundless. */
+.main {
+  position: fixed;
+  left: 340px;
+  top: 48px;
+  right: calc(270px + 16px);
+  bottom: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 8px 30px var(--shadow-color);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
 
-/* ── Scroll dots: sit in the empty strip between the sidebar line and the
-   content text (sidebar edge 340px, chat text starts 36px later) — centered
-   on the boundary's middle height. Middle dot fully visible, outer dots
-   dimmed. */
+/* ── Scroll dots: sit in the workspace surface's left padding strip
+   (workspace edge 340px, chat text starts 36px later) — centered on the
+   boundary's middle height. Middle dot fully visible, outer dots dimmed. */
 .scroll-dots {
   position: fixed;
   left: calc(340px + 8px);
@@ -82,9 +97,9 @@ body[data-theme="dark"] .jump-modal { background: #16202e; }
   display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
 }
 
-.chat-area::-webkit-scrollbar { width: 4px; }
-.chat-area::-webkit-scrollbar-track { background: transparent; }
-.chat-area::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+/* Scrollbar fully removed from the chat area (no native, no custom). */
+.chat-area::-webkit-scrollbar { width: 0; display: none; }
+.chat-area { scrollbar-width: none; }
 
 .empty-state {
   display: none; flex: 1; align-items: center; justify-content: center; flex-direction: row; gap: 14px;
@@ -113,8 +128,8 @@ body[data-theme="dark"] .jump-modal { background: #16202e; }
   font-family: 'SF Mono','Fira Code','Consolas',monospace; color: var(--text-primary);
   font-weight: 500;
   position: relative;
-  width: calc(100vw - 340px - 270px - 120px);
-  max-width: calc(100vw - 340px - 270px - 120px);
+  width: calc(100vw - 340px - 286px - 120px);
+  max-width: calc(100vw - 340px - 286px - 120px);
 }
 
 .ai-message pre::-webkit-scrollbar {

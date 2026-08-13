@@ -113,14 +113,34 @@
     return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? b : a;
   };
 
+  /** The deepest direct chain row still in the thread (reasoning rows, tool
+   *  cards, markers, the placeholder). Used as the flow fallback when
+   *  turnAnchor points at a row that was removed since (e.g. hidePlaceholder
+   *  deletes the placeholder turnAnchor referenced). Scoped to direct
+   *  children so task-tool child rows nested inside a card never become an
+   *  anchor. */
+  CI.lastChainEl = function () {
+    var area = CI.chatArea();
+    if (!area) return null;
+    var rows = area.querySelectorAll(
+      ":scope > .cot-item, :scope > .cot-placeholder, :scope > .cot-marker",
+    );
+    return rows.length ? rows[rows.length - 1] : null;
+  };
+
   /** Reasoning rows, the thinking placeholder and markers continue the
    *  chain right below the latest chain item — or below the last answer
    *  bubble if that sits further down the thread. */
   CI.flowAnchor = function () {
-    var anchor = CI.latestOf(CI.state.turnAnchor, CI.lastMessage());
-    if (anchor) return anchor;
+    var tx = CI.state.turnAnchor;
+    if (tx && tx.isConnected) return CI.latestOf(tx, CI.lastMessage());
+    // turnAnchor pointed at a row that no longer exists (a hidden
+    // placeholder): fall back to the last still-connected chain row — the
+    // bubble fallback alone would drop new rows ABOVE a trailing tool card.
+    var lastChain = CI.lastChainEl();
+    if (lastChain && lastChain.isConnected) return CI.latestOf(lastChain, CI.lastMessage());
     if (CI.state.turnUserMsg && CI.state.turnUserMsg.isConnected) return CI.state.turnUserMsg;
-    return null;
+    return CI.lastMessage();
   };
 
   CI.insertFlow = function (el) {
@@ -132,6 +152,7 @@
       if (area) area.appendChild(el);
     }
     CI.state.turnAnchor = el;
+    CI.scrollToBottom();
   };
 
   /** Tool cards: the model writes its answer first, then calls tools — so
@@ -156,6 +177,7 @@
       if (a) a.appendChild(el);
     }
     CI.state.turnAnchor = el;
+    CI.scrollToBottom();
   };
 
   // Scroll the chat to the newest chain content at most once per animation

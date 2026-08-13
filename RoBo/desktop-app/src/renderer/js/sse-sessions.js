@@ -38,12 +38,9 @@ function handleSessionStatus(properties) {
   if (status === "busy") {
     isCompacting = false;
     window.App.sessionBusy = true;
-    if (
-      statusEl.textContent === "Ready" ||
-      statusEl.textContent.startsWith("Ready")
-    ) {
-      statusEl.textContent = "Processing...";
-    }
+    // Always overwrite: a new generation supersedes whatever the sidebar
+    // showed before, including a stale "Error" stuck from an earlier turn.
+    statusEl.textContent = "Processing...";
   } else if (status === "retry") {
     window.App.sessionBusy = true;
     const attempt = (statusObj && statusObj.attempt) || 0;
