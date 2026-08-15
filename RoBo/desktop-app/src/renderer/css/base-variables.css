@@ -27,6 +27,7 @@
   --logo-dark: #18283a;
   --logo-accent: #f5f7fa;
   --scrollbar-thumb: rgba(160, 200, 235, 0.30);
+  --quick-card-bg: rgba(180, 210, 240, 0.24);
   --color-danger: #c0392b;
   --color-danger-bg: rgba(192,57,43,0.15);
   --color-warning: #e67e22;
@@ -68,6 +69,7 @@ body[data-theme="dark"] {
   --gradient-6: rgba(232,98,26,0.09);
   --gradient-7: rgba(232,98,26,0.105);
   --scrollbar-thumb: rgba(232, 98, 26, 0.35);
+  --quick-card-bg: rgba(232, 98, 26, 0.20);
   --color-danger: #e74c3c;
   --color-danger-bg: rgba(231,76,60,0.20);
   --color-warning: #f39c12;

@@ -79,17 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Sidebar toggle ──
   const sidebar = Utils.$('sidebar');
   const sidebarToggle = Utils.$('sidebarToggle');
-  const searchBar = Utils.$('searchBar');
-  const sidebarLogo = document.querySelector('.sidebar-logo');
-  const sidebarBtns = document.querySelector('.sidebar-btns');
   
   sidebarToggle.addEventListener('click', () => {
     sidebar.classList.toggle('collapsed');
-    if (sidebar.classList.contains('collapsed')) {
-      searchBar.classList.remove('active');
-      sidebarLogo.classList.remove('hidden');
-      sidebarBtns.classList.remove('hidden');
-    }
+    document.body.classList.toggle('sb-collapsed', sidebar.classList.contains('collapsed'));
   });
 
   // ── Init Settings ──
@@ -97,21 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Search ──
   const searchToggle = Utils.$('searchToggle');
-  const searchInput = Utils.$('searchInput');
-  const searchClose = Utils.$('searchClose');
 
   searchToggle.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (sidebar.classList.contains('collapsed')) {
-      // Open center search modal when sidebar is collapsed
-      openCenterSearchModal();
-    } else {
-      // Open sidebar search when sidebar is expanded
-      sidebarLogo.classList.add('hidden');
-      sidebarBtns.classList.add('hidden');
-      searchBar.classList.add('active');
-      searchInput.focus();
-    }
+    openCenterSearchModal();
   });
 
   // ── Center Search Modal ──
@@ -139,10 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Debounce search inputs
   const debouncedCenterSearch = debounce((query) => {
     updateCenterSearchResults(query);
-  }, 250);
-  
-  const debouncedSidebarSearch = debounce((query) => {
-    window.Sessions.searchSessions(query);
   }, 250);
 
   centerSearchInput.addEventListener('input', function() {
@@ -182,19 +160,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  searchClose.addEventListener('click', (e) => {
-    e.stopPropagation();
-    searchBar.classList.remove('active');
-    sidebarLogo.classList.remove('hidden');
-    sidebarBtns.classList.remove('hidden');
-    searchInput.value = '';
-    window.Sessions.searchSessions('');
-  });
-
-  searchInput.addEventListener('click', (e) => e.stopPropagation());
-  searchInput.addEventListener('input', function() {
-    debouncedSidebarSearch(this.value.toLowerCase());
-  });
+  // ── Quick action cards — reuse the hidden header buttons' handlers ──
+  Utils.$('qaNewChat').addEventListener('click', () => Utils.$('newChatBtn').click());
+  Utils.$('qaSettings').addEventListener('click', () => Utils.$('settingsBtn').click());
 
   // ── New chat — save current session, then deselect ──
   const newChatBtn = Utils.$('newChatBtn');

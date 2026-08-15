@@ -7,7 +7,7 @@
      flex item would collapse to fit-content (the prompt box once shrunk to
      its intrinsic input width). */
   width: 100%;
-  max-width: calc(100vw - 340px - 366px + 48px);
+  max-width: calc(100vw - var(--sidebar-w) - 366px + 48px);
   margin: 0 auto; }
 
 .prompt-box {

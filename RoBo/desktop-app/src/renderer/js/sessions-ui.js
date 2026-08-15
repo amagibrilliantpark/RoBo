@@ -1,23 +1,16 @@
 function renderSessionList() {
   const attachedContainer = Utils.$("attachedSessions");
   const normalContainer = Utils.$("normalSessions");
-  const attachedLabel = Utils.$("attachedLabel");
 
   // Single pass + fragments: one reflow per list instead of one per card.
   const attachedFrag = document.createDocumentFragment();
   const normalFrag = document.createDocumentFragment();
-  let attachedCount = 0;
 
   for (const s of window.App.sessions) {
-    if (s.attached) {
-      attachedFrag.appendChild(createSessionCard(s));
-      attachedCount++;
-    } else {
-      normalFrag.appendChild(createSessionCard(s));
-    }
+    const card = createSessionCard(s);
+    if (s.attached) attachedFrag.appendChild(card);
+    else normalFrag.appendChild(card);
   }
-
-  attachedLabel.style.display = attachedCount > 0 ? "block" : "none";
 
   attachedContainer.innerHTML = "";
   normalContainer.innerHTML = "";
@@ -34,6 +27,14 @@ function createSessionCard(session) {
   card.dataset.id = session.id;
   card.dataset.name = session.title || "New Chat";
 
+  if (session.attached) {
+    const pin = document.createElement("span");
+    pin.className = "sc-pin";
+    pin.innerHTML =
+      '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10.2v3"/><path d="M5.1 6.2a1.2 1.2 0 0 1-.7 1.1l-1.2.7a1.2 1.2 0 0 0-.6 1v.5a.5.5 0 0 0 .5.5h8.6a.5.5 0 0 0 .5-.5v-.5a1.2 1.2 0 0 0-.6-1l-1.2-.7a1.2 1.2 0 0 1-.7-1.1V3.6h1a1.1 1.1 0 0 0 0-2.2H4.1a1.1 1.1 0 0 0 0 2.2h1z"/></svg>';
+    card.appendChild(pin);
+  }
+
   const title = document.createElement("div");
   title.className = "sc-title";
   title.textContent = session.title || "New Chat";
@@ -45,9 +46,10 @@ function createSessionCard(session) {
 
   const menu = document.createElement("div");
   menu.className = "session-menu";
+  const attachLabel = session.attached ? "Detach" : "Attach";
   menu.innerHTML = `
     <button class="session-menu-item" data-action="rename"><svg viewBox="0 0 14 14"><path d="M10 2l2 2-7 7H3v-2l7-7z"/></svg>Rename</button>
-    <button class="session-menu-item" data-action="attach"><svg viewBox="0 0 14 14"><path d="M1 7h5M3.5 4.5v5"/><rect x="7" y="2" width="6" height="10" rx="1.5"/></svg>Attach</button>
+    <button class="session-menu-item" data-action="attach"><svg viewBox="0 0 14 14"><path d="M7 10.2v3"/><path d="M5.1 6.2a1.2 1.2 0 0 1-.7 1.1l-1.2.7a1.2 1.2 0 0 0-.6 1v.5a.5.5 0 0 0 .5.5h8.6a.5.5 0 0 0 .5-.5v-.5a1.2 1.2 0 0 0-.6-1l-1.2-.7a1.2 1.2 0 0 1-.7-1.1V3.6h1a1.1 1.1 0 0 0 0-2.2H4.1a1.1 1.1 0 0 0 0 2.2h1z"/></svg>${attachLabel}</button>
     <button class="session-menu-item danger" data-action="delete"><svg viewBox="0 0 14 14"><path d="M2 4h10M5 4V2h4v2M3 4v8a1 1 0 001 1h6a1 1 0 001-1V4"/></svg>Delete</button>
   `;
 
@@ -56,7 +58,11 @@ function createSessionCard(session) {
   card.appendChild(menu);
 
   card.addEventListener("click", function (e) {
-    if (e.target.closest(".session-more") || e.target.closest(".session-menu"))
+    if (
+      e.target.closest(".session-more") ||
+      e.target.closest(".session-menu") ||
+      e.target.closest(".sc-title-input")
+    )
       return;
     selectSession(session.id);
   });
@@ -80,7 +86,7 @@ function createSessionCard(session) {
         document
           .querySelectorAll(".session-menu")
           .forEach((m) => m.classList.remove("active"));
-        startRename(card, title, session);
+        startRename(card, card.querySelector(".sc-title"), session);
       } else if (action === "attach") {
         toggleAttach(session.id);
       }

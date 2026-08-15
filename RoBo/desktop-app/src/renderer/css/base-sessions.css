@@ -6,14 +6,26 @@
   font-family: 'Manrope', sans-serif; font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; padding: 10px 10px 4px 10px; user-select: none;
 }
 
+.sessions-label {
+  font-family: 'Space Grotesk', sans-serif; text-transform: none; letter-spacing: 0px;
+  font-size: 13.5px; font-weight: 700; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 10px 6px 10px;
+}
+.sessions-label svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-muted); }
+
 .session-card { padding: 11px 12px; border-radius: 7px; background: transparent; border: none; cursor: pointer; transition: background 0.14s; display: flex; align-items: center; justify-content: space-between; position: relative; }
 .session-card:hover { background: var(--accent-hover); }
 .session-card.active { background: var(--accent-hover); }
 .sc-title { font-family: 'Manrope', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.1px; flex: 1; }
 
+.sc-pin { display: inline-flex; align-items: center; flex-shrink: 0; margin-right: 8px; color: var(--text-muted); }
+.sc-pin svg { width: 13px; height: 13px; }
+
 .sc-title-input {
   font-family: 'Manrope', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text-primary); border: none; outline: none; background: transparent; border-radius: 0; padding: 0; margin: 0; flex: 1; min-width: 0; box-shadow: none; -webkit-appearance: none; appearance: none; letter-spacing: -0.1px;
 }
+.sc-title-input::selection { background: var(--accent-hover); color: var(--text-primary); }
 
 .session-more {
   width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; opacity: 0; transition: opacity 0.12s;
@@ -35,3 +47,23 @@
 .session-menu-item svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; flex-shrink: 0; }
 .session-menu-item.danger { color: var(--color-danger); }
 .session-menu-item.danger:hover { background: var(--color-danger-bg); }
+
+/* ── Quick action cards (New Chat / Settings) — sit above the sessions
+   list. Same box, height, type rhythm as session cards (no extra
+   horizontal inset); a denser resting tone sets them apart. */
+.quick-actions {
+  padding: 6px 0 8px 0;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.qa-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px; border-radius: 7px;
+  background: transparent; border: none; cursor: pointer;
+  font-family: 'Manrope', sans-serif;
+  font-size: 13.5px; font-weight: 700; color: var(--text-primary);
+  letter-spacing: -0.1px;
+  transition: background 0.14s;
+}
+.qa-card:hover { background: var(--quick-card-bg); }
+.qa-card svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--text-secondary); }
+.qa-card:hover svg { color: var(--text-primary); }
