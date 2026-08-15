@@ -238,6 +238,16 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
   background: var(--accent-color); flex-shrink: 0;
 }
 
+/* Mode popup: the selected card leads with a per-mode icon instead of the
+   dot (model/variant popups keep the dot). */
+#modePopup .popup-item::before { content: none; }
+#modePopup .popup-item svg {
+  display: none; width: 13px; height: 13px; flex-shrink: 0;
+}
+#modePopup .popup-item.selected svg {
+  display: block; color: var(--accent-color);
+}
+
 /* ── Prompt Stack ── */
 .prompt-stack {
   width: 100%; display: flex; flex-direction: column; position: relative;

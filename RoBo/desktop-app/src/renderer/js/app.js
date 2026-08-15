@@ -29,8 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedAgent = localStorage.getItem('robo_agent');
     if (savedAgent) {
       window.App.currentAgent = savedAgent;
+      const modeNames = { build: 'Edit', plan: 'Plan' };
       const modeSelector = Utils.$('modeSelector');
-      if (modeSelector) modeSelector.querySelector('span').textContent = savedAgent.charAt(0).toUpperCase() + savedAgent.slice(1);
+      if (modeSelector) modeSelector.querySelector('span').textContent = modeNames[savedAgent] || savedAgent;
       document.querySelectorAll('#modePopup .popup-item').forEach(item => {
         item.classList.toggle('selected', item.dataset.value === savedAgent);
       });
@@ -164,6 +165,14 @@ document.addEventListener('DOMContentLoaded', () => {
   Utils.$('qaNewChat').addEventListener('click', () => Utils.$('newChatBtn').click());
   Utils.$('qaSettings').addEventListener('click', () => Utils.$('settingsBtn').click());
 
+  // ── Sessions collapse (chevron on the heading) ──
+  const sessionsCollapse = Utils.$('sessionsCollapse');
+  sessionsCollapse.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const collapsed = document.body.classList.toggle('sessions-collapsed');
+    sessionsCollapse.classList.toggle('rotated', collapsed);
+  });
+
   // ── New chat — save current session, then deselect ──
   const newChatBtn = Utils.$('newChatBtn');
   newChatBtn.addEventListener('click', async (e) => {
@@ -218,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
     promptInput.scrollTop = promptInput.scrollHeight;
   });
 
-  // ── Mode selector (Build/Plan) ──
+  // ── Mode selector (Edit/Plan) ──
   const modeSelector = Utils.$('modeSelector');
   const modePopup = Utils.$('modePopup');
 

@@ -13,13 +13,34 @@
   padding: 14px 10px 6px 10px;
 }
 .sessions-label svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-muted); }
+.sessions-collapse {
+  width: 22px; height: 22px; border-radius: 5px; border: none;
+  background: transparent; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; margin-left: auto; flex-shrink: 0;
+  transition: color 0.14s;
+}
+.sessions-collapse:hover { color: var(--text-secondary); }
+.sessions-collapse svg { width: 12px; height: 12px; transition: transform 0.18s; }
+.sessions-collapse.rotated svg { transform: rotate(180deg); }
+
+/* Session cards hang under the "Sessions" text: they are indented from
+   the left, and the reserved gutter is where the attach pin sits — so the
+   title never moves when a session gets pinned. */
+#attachedSessions, #normalSessions { padding-left: 30px; }
+body.sessions-collapsed #attachedSessions,
+body.sessions-collapsed #normalSessions { display: none; }
 
 .session-card { padding: 11px 12px; border-radius: 7px; background: transparent; border: none; cursor: pointer; transition: background 0.14s; display: flex; align-items: center; justify-content: space-between; position: relative; }
 .session-card:hover { background: var(--accent-hover); }
 .session-card.active { background: var(--accent-hover); }
 .sc-title { font-family: 'Manrope', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.1px; flex: 1; }
 
-.sc-pin { display: inline-flex; align-items: center; flex-shrink: 0; margin-right: 8px; color: var(--text-muted); }
+.sc-pin {
+  position: absolute; left: -22px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center;
+  color: var(--text-muted);
+}
 .sc-pin svg { width: 13px; height: 13px; }
 
 .sc-title-input {
