@@ -32,12 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedAgent = localStorage.getItem('robo_agent');
     if (savedAgent) {
       window.App.currentAgent = savedAgent;
-      const modeNames = { build: 'Edit', plan: 'Plan' };
-      const modeSelector = Utils.$('modeSelector');
-      if (modeSelector) modeSelector.querySelector('span').textContent = modeNames[savedAgent] || savedAgent;
-      document.querySelectorAll('#modePopup .popup-item').forEach(item => {
-        item.classList.toggle('selected', item.dataset.value === savedAgent);
-      });
+      updateModeUI(savedAgent);
     }
   });
 
@@ -234,25 +229,53 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ── Mode selector (Edit/Plan) ──
+  const MODE_META = {
+    build: { name: 'Edit', desc: 'Write and refine code in the workspace' },
+    plan: { name: 'Plan', desc: 'Research first, then propose a plan' },
+  };
+
   const modeSelector = Utils.$('modeSelector');
   const modePopup = Utils.$('modePopup');
+  const modeWrap = modeSelector.parentElement;
+
+  /** Sync trigger label, tooltip and option states to the given agent. */
+  function updateModeUI(agent) {
+    const meta = MODE_META[agent] || { name: agent, desc: '' };
+    const label = modeSelector.querySelector('.mode-label');
+    if (label) label.textContent = meta.name;
+    const tooltipTitle = Utils.$('modeTooltip').querySelector('.mode-tooltip-title');
+    const tooltipDesc = Utils.$('modeTooltip').querySelector('.mode-tooltip-desc');
+    if (tooltipTitle) tooltipTitle.textContent = meta.name;
+    if (tooltipDesc) tooltipDesc.textContent = meta.desc;
+    modePopup.querySelectorAll('.mode-option').forEach((item) => {
+      const on = item.dataset.value === agent;
+      item.classList.toggle('selected', on);
+      item.setAttribute('aria-selected', String(on));
+    });
+  }
 
   modeSelector.addEventListener('click', (e) => {
     e.stopPropagation();
     const wasOpen = modePopup.classList.contains('active');
     closeAllPopups();
-    if (!wasOpen) modePopup.classList.add('active');
+    if (!wasOpen) {
+      modePopup.classList.add('active');
+      positionModePopup(modePopup, modeSelector);
+      modeWrap.classList.add('is-open');
+      modeSelector.setAttribute('aria-expanded', 'true');
+    }
   });
 
-  modePopup.querySelectorAll('.popup-item').forEach(item => {
+  modePopup.querySelectorAll('.mode-option').forEach((item) => {
     item.addEventListener('click', (e) => {
       e.stopPropagation();
-      modePopup.querySelectorAll('.popup-item').forEach(i => i.classList.remove('selected'));
-      item.classList.add('selected');
-      modeSelector.querySelector('span').textContent = item.textContent;
+      const value = item.dataset.value;
+      window.App.currentAgent = value;
+      localStorage.setItem('robo_agent', value);
+      updateModeUI(value);
       modePopup.classList.remove('active');
-      window.App.currentAgent = item.dataset.value;
-      localStorage.setItem('robo_agent', item.dataset.value);
+      modeWrap.classList.remove('is-open');
+      modeSelector.setAttribute('aria-expanded', 'false');
     });
   });
 
@@ -269,6 +292,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Close popups on outside click ──
   document.addEventListener('click', () => closeAllPopups());
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAllPopups();
+  });
 
   document.addEventListener('click', () => {
     document.querySelectorAll('.session-menu').forEach(m => m.classList.remove('active'));
@@ -296,4 +323,41 @@ function closeAllPopups() {
   Utils.$('modePopup').classList.remove('active');
   Utils.$('modelPopup').classList.remove('active');
   Utils.$('variantPopup').classList.remove('active');
+  const modeBtn = Utils.$('modeSelector');
+  modeBtn.parentElement.classList.remove('is-open');
+  modeBtn.setAttribute('aria-expanded', 'false');
+}
+
+/**
+ * Position the mode popover relative to its trigger with viewport
+ * collision: opens above by default, flips below when there is no room,
+ * and never lets the popover escape the screen edges. The arrow stays
+ * pointed at the trigger's horizontal center.
+ */
+function positionModePopup(popup, trigger) {
+  // Very narrow windows: the bottom-sheet CSS takes over.
+  if (window.matchMedia('(max-width: 560px)').matches) return;
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const gap = 8;
+  const t = trigger.getBoundingClientRect();
+  const pW = popup.offsetWidth || 200;
+  const pH = popup.offsetHeight || 120;
+
+  const spaceAbove = t.top - gap;
+  const spaceBelow = vh - t.bottom - gap;
+  const openBelow = spaceAbove < pH && spaceBelow >= spaceAbove;
+
+  const top = openBelow ? t.bottom + gap : Math.max(8, t.top - pH - gap);
+  const left = Math.min(Math.max(8, t.left), Math.max(8, vw - pW - 8));
+
+  popup.style.top = top + 'px';
+  popup.style.left = left + 'px';
+  popup.style.bottom = 'auto';
+  popup.style.right = 'auto';
+  popup.classList.toggle('open-below', openBelow);
+
+  const arrowX = Math.max(16, Math.min(t.left + t.width / 2 - left, pW - 16));
+  popup.style.setProperty('--arrow-x', `${arrowX}px`);
 }
