@@ -11,6 +11,18 @@ function debounce(func, wait) {
   };
 }
 
+// ── Global error reporting ──
+// Every uncaught exception / rejected promise is forwarded to the main
+// process logger, so `npm run dev` prints them in the terminal.
+window.addEventListener('error', (e) => {
+  const target = e.message || e.type;
+  window.electronAPI.log('error', 'RENDERER-EXCEPTION', `${target} @ ${e.filename}:${e.lineno}`);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  const reason = e.reason;
+  window.electronAPI.log('error', 'RENDERER-EXCEPTION', reason && reason.stack ? reason.stack : String(reason));
+});
+
 /** Main application entry point — wires up all UI event listeners. */
 document.addEventListener('DOMContentLoaded', () => {
   window.SSE.initSSE();
@@ -230,23 +242,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Mode selector (Edit/Plan) ──
   const MODE_META = {
-    build: { name: 'Edit', desc: 'Write and refine code in the workspace' },
-    plan: { name: 'Plan', desc: 'Research first, then propose a plan' },
+    build: 'Code',
+    plan: 'Plan',
   };
 
   const modeSelector = Utils.$('modeSelector');
   const modePopup = Utils.$('modePopup');
   const modeWrap = modeSelector.parentElement;
 
-  /** Sync trigger label, tooltip and option states to the given agent. */
+  /** Sync trigger label and option states to the given agent. */
   function updateModeUI(agent) {
-    const meta = MODE_META[agent] || { name: agent, desc: '' };
     const label = modeSelector.querySelector('.mode-label');
-    if (label) label.textContent = meta.name;
-    const tooltipTitle = Utils.$('modeTooltip').querySelector('.mode-tooltip-title');
-    const tooltipDesc = Utils.$('modeTooltip').querySelector('.mode-tooltip-desc');
-    if (tooltipTitle) tooltipTitle.textContent = meta.name;
-    if (tooltipDesc) tooltipDesc.textContent = meta.desc;
+    if (label) label.textContent = MODE_META[agent] || agent;
     modePopup.querySelectorAll('.mode-option').forEach((item) => {
       const on = item.dataset.value === agent;
       item.classList.toggle('selected', on);

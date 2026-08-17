@@ -136,52 +136,21 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
 
 .selector-btn:hover { background: var(--accent-hover); border-color: var(--accent-color); }
 
-/* Mode selector trigger: quiet closed state, hover changes surface only
-   (same size, same padding, no layout shift). */
+/* Mode selector trigger: quiet closed state, hover uses the exact same
+   surface as the model selector's hover. Fixed width so the label swap
+   (Code/Plan) never shifts the adjacent model selector. */
 .selector-btn.mode-btn {
   background: transparent; border-color: transparent;
-  min-width: 0; padding: 6px 10px;
+  width: 72px; min-width: 0; padding: 6px 10px;
   color: var(--text-secondary);
-  transition: background 0.14s, border-color 0.14s, color 0.14s;
+  transition: background 0.14s, border-color 0.14s;
 }
 .selector-btn.mode-btn:hover,
 .selector-btn.mode-btn.is-open {
-  background: var(--accent-hover); border-color: var(--border-color);
-  color: var(--text-primary);
+  background: var(--accent-hover); border-color: var(--accent-color);
 }
 .selector-btn.mode-btn:focus-visible {
   outline: 2px solid var(--accent-color); outline-offset: 1px;
-}
-.mode-chevron {
-  width: 12px; height: 12px; flex-shrink: 0; color: var(--text-muted);
-  transition: transform 0.15s;
-}
-.selector-btn.mode-btn.is-open .mode-chevron { transform: rotate(180deg); }
-
-/* Trigger tooltip: an overlay layer, never reflows the UI around it. */
-.mode-tooltip {
-  position: absolute; left: 50%; bottom: calc(100% + 10px);
-  transform: translateX(-50%) translateY(2px);
-  display: flex; flex-direction: column; gap: 1px;
-  background: var(--bg-modal); border: 1px solid var(--border-color);
-  border-radius: 8px; padding: 6px 10px;
-  box-shadow: 0 4px 14px var(--shadow-color);
-  opacity: 0; pointer-events: none; white-space: nowrap;
-  transition: opacity 0.12s ease 0.28s, transform 0.12s ease 0.28s;
-  z-index: 90;
-}
-.selector-wrapper:not(.is-open):hover .selector-btn.mode-btn ~ .mode-tooltip,
-.selector-wrapper:not(.is-open):focus-within .selector-btn.mode-btn ~ .mode-tooltip {
-  opacity: 1; transform: translateX(-50%) translateY(0);
-}
-.selector-wrapper.is-open .mode-tooltip { opacity: 0; transition-delay: 0s; }
-.mode-tooltip-title {
-  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
-  color: var(--text-primary);
-}
-.mode-tooltip-desc {
-  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 400;
-  color: var(--text-muted);
 }
 
 /* â”€â”€ Popup â”€â”€ */
@@ -289,18 +258,13 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
 /* Mode popover: a command-style popover anchored to the trigger. Size is
    content-driven, position is calculated in JS (viewport collision). */
 .mode-popover {
-  bottom: auto; left: auto;
+  position: fixed; bottom: auto; left: auto;
   width: max-content; min-width: 220px;
   max-width: min(340px, calc(100vw - 24px));
-  max-height: min(340px, calc(100vh - 140px));
-  overflow-y: auto;
   padding: 5px; border-radius: 12px;
   box-shadow: 0 12px 32px var(--shadow-color), 0 3px 10px var(--shadow-color);
   z-index: 400;
 }
-.mode-popover::-webkit-scrollbar { width: 3px; }
-.mode-popover::-webkit-scrollbar-track { background: transparent; }
-.mode-popover::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
 
 /* Little arrow pointing at the trigger; x position set via --arrow-x (JS). */
 .mode-popover::before {
@@ -312,9 +276,6 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
   pointer-events: none;
 }
 .mode-popover.open-below::before { bottom: auto; top: -5px; transform: rotate(225deg); }
-
-.mode-popover.active { animation: modePopIn 0.14s ease-out; }
-.mode-popover.active.open-below { animation-name: modePopInBelow; }
 
 /* Option row: fixed icon column + name/description + reserved check slot.
    The whole row is the click target; selection never changes the layout. */
@@ -360,28 +321,14 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
 }
 .mode-option.selected .mode-opt-check svg { opacity: 1; transform: scale(1); }
 
-@keyframes modePopIn {
-  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
-  to { opacity: 1; transform: none; }
-}
-@keyframes modePopInBelow {
-  from { opacity: 0; transform: translateY(4px) scale(0.97); }
-  to { opacity: 1; transform: none; }
-}
-
 /* Very narrow windows: the popover turns into a bottom sheet instead of
    a floating menu, so it can never collide with screen edges. */
 @media (max-width: 560px) {
   .mode-popover.active {
     position: fixed; top: auto; bottom: 10px; left: 10px; right: 10px;
     width: auto; max-width: none; border-radius: 15px;
-    animation-name: modeSheetIn; transform-origin: bottom center;
   }
   .mode-popover.active::before { display: none; }
-  @keyframes modeSheetIn {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: none; }
-  }
 }
 
 /* â”€â”€ Prompt Stack â”€â”€ */
