@@ -1,4 +1,4 @@
-.provider-detail-actions {
+﻿.provider-detail-actions {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
@@ -11,9 +11,9 @@
     border-radius: 10px;
     border: 1px solid var(--border-color);
     background: var(--bg-input);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-secondary);
     cursor: pointer;
     transition: background 0.12s;
@@ -39,9 +39,9 @@
     border-radius: 10px;
     border: none;
     background: var(--accent-color);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
     color: #fff;
     cursor: pointer;
     transition: opacity 0.12s;
@@ -81,9 +81,9 @@
     border-radius: 999px;
     background: var(--color-success-bg);
     color: var(--color-success);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
 }
 .provider-connected-badge svg {
     width: 15px;
@@ -95,9 +95,9 @@
     border-radius: 10px;
     border: 1px solid var(--color-danger);
     background: var(--color-danger-bg);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--color-danger);
     cursor: pointer;
     transition: background 0.12s, opacity 0.12s;
@@ -124,9 +124,9 @@
     border-radius: 8px;
     background: var(--color-danger-bg);
     color: var(--color-danger);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
     display: none;
 }
 .provider-error.active {

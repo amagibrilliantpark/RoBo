@@ -1,4 +1,4 @@
-/* ── Prompt ── */
+﻿/* â”€â”€ Prompt â”€â”€ */
 .prompt-area { padding: 16px 36px 28px 36px; position: relative; z-index: 10;
   /* Sits in the content column but slightly WIDER than the messages above
      (the old frame width + 48px): the composer's edges stick out ~24px on
@@ -26,7 +26,7 @@
 
 .prompt-input {
   flex: 1; border: none; outline: none; background: transparent;
-  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 400;
   color: var(--text-primary); padding: 10px 0 8px 0; line-height: 1.4;
   /* Multi-line: wrap instead of one endless line, scroll INSIDE the box
      when the text outgrows it. The scrollbar is hidden (keyboard keeps
@@ -47,7 +47,7 @@
   display: flex; align-items: center; gap: 6px; padding-bottom: 12px;
 }
 
-/* ── Send btn (bottom row, aligned with the mode/model selectors) ── */
+/* â”€â”€ Send btn (bottom row, aligned with the mode/model selectors) â”€â”€ */
 .btn-send {
   width: 40px; height: 40px; border-radius: 10px; border: none;
   background: var(--accent-color); color: #fff;
@@ -67,10 +67,10 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
 .btn-send:not(.stop-mode) svg.stop-icon { display: none; }
 .btn-send:not(.stop-mode) svg.arrow-icon { display: block; }
 
-/* ── Context ring (bottom-right of the prompt box) ──
+/* â”€â”€ Context ring (bottom-right of the prompt box) â”€â”€
    An empty donut whose arc fills with usage. The fill only uses ACCENT
    tones (soft -> mid -> deep) so it never clashes with the theme.
-   Hover opens the detail modal INSTANTLY — no animation. */
+   Hover opens the detail modal INSTANTLY â€” no animation. */
 .ctx-ring-wrap {
   position: absolute; right: 74px; bottom: 18px;
   z-index: 30; display: flex;
@@ -103,7 +103,7 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
 .ctx-ring-wrap:hover .ctx-modal { display: block; }
 
 .ctx-modal-title {
-  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 800;
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 500;
   text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--text-muted); margin-bottom: 7px;
 }
@@ -112,15 +112,15 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
   gap: 14px; padding: 2px 0;
 }
 .ctx-modal-row span {
-  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 400;
   color: var(--text-secondary);
 }
 .ctx-modal-row b {
-  font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 500;
   color: var(--text-primary); white-space: nowrap;
 }
 
-/* ── Selectors ── */
+/* â”€â”€ Selectors â”€â”€ */
 .selector-wrapper { position: relative; }
 
 .selector-btn {
@@ -128,7 +128,7 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
   padding: 6px 12px; border-radius: 8px;
   border: 1px solid var(--border-color);
   background: var(--bg-input);
-  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 400;
   color: var(--text-secondary); cursor: pointer; flex-shrink: 0;
   transition: background 0.15s, border-color 0.15s; user-select: none;
   min-width: 72px; justify-content: center;
@@ -136,7 +136,7 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
 
 .selector-btn:hover { background: var(--accent-hover); border-color: var(--accent-color); }
 
-/* ── Popup ── */
+/* â”€â”€ Popup â”€â”€ */
 .popup-menu {
   display: none; position: absolute; bottom: calc(100% + 10px); left: 0;
   background: var(--bg-modal); border: 1px solid var(--border-color); border-radius: 12px; padding: 6px;
@@ -163,7 +163,7 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
 .model-popup-list::-webkit-scrollbar-track { background: transparent; }
 .model-popup-list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
 
-/* ── Model Popup Header ── */
+/* â”€â”€ Model Popup Header â”€â”€ */
 .model-popup-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 10px 8px 14px;
@@ -171,15 +171,15 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
   margin-bottom: 4px; flex-shrink: 0;
 }
 .model-popup-header-label {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 11px; font-weight: 600; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.8px;
+  font-family: 'Geist Sans', sans-serif;
+  font-size: 13px; font-weight: 500; color: var(--text-primary);
+  letter-spacing: 0.4px;
 }
 
 /* Provider group header inside the model catalog */
 .model-group-header {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 10.5px; font-weight: 500; color: var(--text-muted);
   text-transform: uppercase; letter-spacing: 0.6px;
   padding: 12px 14px 4px;
   margin-top: 2px;
@@ -193,8 +193,8 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
   padding: 4px 10px; border-radius: 6px;
   border: 1px solid var(--border-color);
   background: var(--bg-input);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 11px; font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px; font-weight: 400;
   color: var(--accent-color); cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
   white-space: nowrap;
@@ -208,7 +208,7 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
   fill: none; stroke-width: 2; stroke-linecap: round;
 }
 
-/* ── Variant Popup (separate, positioned via JS) ── */
+/* â”€â”€ Variant Popup (separate, positioned via JS) â”€â”€ */
 .variant-popup {
   min-width: 100px;
   max-height: 240px; overflow-y: auto;
@@ -225,7 +225,7 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
 
 .popup-item {
   padding: 9px 14px; border-radius: 8px;
-  font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600;
+  font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 400;
   color: var(--text-primary); cursor: pointer; transition: background 0.12s;
   display: flex; align-items: center; gap: 8px; white-space: nowrap;
 }
@@ -248,12 +248,12 @@ body[data-theme="dark"] .btn-send.stop-mode { background: #b8450a; }
   display: block; color: var(--accent-color);
 }
 
-/* ── Prompt Stack ── */
+/* â”€â”€ Prompt Stack â”€â”€ */
 .prompt-stack {
   width: 100%; display: flex; flex-direction: column; position: relative;
 }
 
-/* ── Dark mode: remove glassmorphism ── */
+/* â”€â”€ Dark mode: remove glassmorphism â”€â”€ */
 body[data-theme="dark"] .prompt-box {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;

@@ -1,4 +1,4 @@
-/* ── Revert Modal ── */
+﻿/* â”€â”€ Revert Modal â”€â”€ */
 .revert-modal-overlay {
     position: fixed;
     top: 0;
@@ -32,9 +32,9 @@
     padding: 0 0 12px 0;
 }
 .rm-title {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 15px;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--text-primary);
 }
 
@@ -47,18 +47,18 @@
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 10px 12px;
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--text-primary);
     margin-bottom: 10px;
     font-style: italic;
 }
 
 .rm-warning {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--color-warning);
     line-height: 1.4;
 }
@@ -74,9 +74,9 @@
     border-radius: 8px;
     border: 1px solid var(--border-color);
     background: var(--bg-input);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-secondary);
     cursor: pointer;
 }
@@ -89,9 +89,9 @@
     border-radius: 8px;
     border: none;
     background: var(--accent-color);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
     color: #fff;
     cursor: pointer;
 }

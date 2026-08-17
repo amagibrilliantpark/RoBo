@@ -19,7 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.electronAPI.onProjectReady(async (data) => {
     const sidebarStatusEl = Utils.$('sidebarStatus');
-    if (sidebarStatusEl) sidebarStatusEl.textContent = 'Ready';
+    if (sidebarStatusEl) {
+      sidebarStatusEl.textContent = 'Ready';
+      sidebarStatusEl.classList.remove('error');
+    }
 
     await window.Sessions.loadSessions();
     await window.Providers.loadProviders();
@@ -41,7 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.electronAPI.onProjectError((data) => {
     console.error(`[Init] ❌ project:error received:`, data.error);
     const sidebarStatusEl = Utils.$('sidebarStatus');
-    if (sidebarStatusEl) sidebarStatusEl.textContent = 'Error: ' + data.error;
+    if (sidebarStatusEl) {
+      sidebarStatusEl.textContent = 'Error: ' + data.error;
+      sidebarStatusEl.classList.add('error');
+    }
   });
 
   // ── Startup status monitor ──

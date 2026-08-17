@@ -1,4 +1,4 @@
-/* Provider detail / key input */
+﻿/* Provider detail / key input */
 .provider-detail {
     display: none;
     flex-direction: column;
@@ -38,9 +38,9 @@
 }
 
 .provider-detail-note {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 11px;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--text-muted);
     line-height: 1.5;
     padding: 8px 12px;
@@ -85,9 +85,9 @@
 }
 
 .provider-detail-title {
-    font-family: "Space Grotesk", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-primary);
     letter-spacing: 0.5px;
 }
@@ -99,15 +99,15 @@
 }
 
 .provider-detail-label {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-secondary);
 }
 .provider-detail-hint {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--text-muted);
     line-height: 1.45;
 }
@@ -118,9 +118,9 @@
     border-radius: 12px;
     border: 2px solid var(--border-color);
     background: var(--bg-input);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--text-primary);
     outline: none;
     transition:

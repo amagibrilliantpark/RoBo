@@ -1,4 +1,4 @@
-/* ── Right Panel strip ──
+﻿/* â”€â”€ Right Panel strip â”€â”€
    Visually removed: the panel itself is hidden and no longer reserves
    width (the workspace's right inset is the slim 6px gap, so the strip is
    blank app background behind the window edge).
@@ -9,7 +9,7 @@
   display: none;
 }
 
-/* Dark mode: nothing special — strip stays transparent */
+/* Dark mode: nothing special â€” strip stays transparent */
 body[data-theme="dark"] .right-panel {
   background: transparent;
 }
@@ -17,21 +17,21 @@ body[data-theme="dark"] .right-panel {
 .right-panel::-webkit-scrollbar-track { background: transparent; }
 .right-panel::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
 
-/* Session name — now lives in the workspace surface's top-left corner
+/* Session name â€” now lives in the workspace surface's top-left corner
    (moved from the hidden right panel; the element + updater stayed intact).
    Medium-thin header: tall enough to read as its own row, capped at a
-   max-width so overlong titles fold into "…" instead of spilling. */
+   max-width so overlong titles fold into "â€¦" instead of spilling. */
 .rp-session-name {
   flex-shrink: 0;
   padding: 14px 24px 10px 24px;
   max-width: 420px;
-  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; color: var(--text-secondary);
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 500; color: var(--text-secondary);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;
 }
 
 .rp-syncro-display {
   padding: 0 20px 6px 20px;
-  font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600;
+  font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 400;
   display: flex; align-items: center; gap: 6px;
 }
 
@@ -63,13 +63,13 @@ body[data-theme="dark"] .right-panel {
 }
 
 .rp-info-text {
-  font-family: 'DM Sans', sans-serif; font-size: 11.5px; font-weight: 500;
+  font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 400;
   color: var(--text-muted); font-style: italic;
 }
 
 .rp-todo-header {
   padding: 10px 20px 6px 20px;
-  font-family: 'DM Sans', sans-serif; font-size: 14.5px; font-weight: 700; color: var(--text-secondary);
+  font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 500; color: var(--text-secondary);
   cursor: pointer; user-select: none;
 }
 .rp-todo-header .todo-arrow { display: inline-block; width: 12px; text-align: center; }
@@ -86,17 +86,17 @@ body[data-theme="dark"] .right-panel {
 
 .rp-todo-item {
   display: flex; align-items: center; gap: 8px;
-  font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--text-muted);
+  font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 400; color: var(--text-muted);
   cursor: default;
   border-left: 3px solid transparent;
   padding-left: 9px;
 }
 .rp-todo-item .todo-check {
-  font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text-muted); flex-shrink: 0;
 }
 .rp-todo-item-active {
   color: var(--accent-color);
-  font-weight: 600;
+  font-weight: 500;
   background: var(--accent-hover);
   border-left: 3px solid var(--accent-color);
   padding-left: 9px;
@@ -110,7 +110,7 @@ body[data-theme="dark"] .right-panel {
   margin-top: auto; padding: 14px 20px 20px 20px;
   display: flex; align-items: center; gap: 8px;
 }
-.rp-footer-logo { font-family: 'Space Grotesk', sans-serif; font-size: 14.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: 2px; }
+.rp-footer-logo { font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 500; color: var(--text-secondary); letter-spacing: 2px; }
 .rp-footer-logo em { font-style: normal; color: var(--accent-color); font-weight: 400; }
-.rp-footer-ver { font-family: 'DM Sans', sans-serif; font-size: 14.5px; font-weight: 600; color: var(--text-muted); }
+.rp-footer-ver { font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 500; color: var(--text-muted); }
 

@@ -41,11 +41,13 @@ function handleSessionStatus(properties) {
     // Always overwrite: a new generation supersedes whatever the sidebar
     // showed before, including a stale "Error" stuck from an earlier turn.
     statusEl.textContent = "Processing...";
+    statusEl.classList.remove('error');
   } else if (status === "retry") {
     window.App.sessionBusy = true;
     const attempt = (statusObj && statusObj.attempt) || 0;
     const retryMsg = (statusObj && statusObj.message) || "Retrying...";
     statusEl.textContent = `Retry ${attempt} \u2014 ${retryMsg}`;
+    statusEl.classList.remove('error');
     window.Chain.addMarker("retry", `Retry ${attempt} \u2014 ${retryMsg}`);
   } else if (status === "idle") {
     // `session.status` with type "idle" is emitted by OpenCode whenever a
@@ -83,6 +85,7 @@ function handleSessionIdle(properties) {
   if (!currentText.includes("Ready") && !currentText.startsWith("Error")) {
     statusEl.textContent = "Ready";
   }
+  statusEl.classList.remove('error');
   window.Chat.finalizeStreaming();
   window.Chat.setStopMode(false);
   window.Chat.hideAllStatusIndicators();
@@ -214,7 +217,10 @@ function handleSessionError(properties) {
   }
 
   const statusEl = Utils.$("sidebarStatus");
-  if (statusEl) statusEl.textContent = "Error";
+  if (statusEl) {
+    statusEl.textContent = "Error";
+    statusEl.classList.add('error');
+  }
   window.App.sessionBusy = false;
   window.Chat.setStopMode(false);
   isCompacting = false;

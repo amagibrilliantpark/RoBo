@@ -1,4 +1,4 @@
-/* ── Provider Modal ── */
+﻿/* â”€â”€ Provider Modal â”€â”€ */
 .provider-modal-overlay {
     position: fixed;
     inset: 0;
@@ -44,9 +44,9 @@
 }
 
 .provider-modal-title {
-    font-family: "Space Grotesk", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-primary);
     letter-spacing: 1px;
 }
@@ -112,7 +112,7 @@
     white-space: nowrap;
     flex-shrink: 0;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-primary);
     min-width: 0;
 }
@@ -184,7 +184,7 @@
     }
 }
 
-/* ── Provider list view toggle ── */
+/* â”€â”€ Provider list view toggle â”€â”€ */
 .provider-list.active {
     display: flex;
 }

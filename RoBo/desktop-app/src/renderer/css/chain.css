@@ -1,4 +1,4 @@
-/* ── Chain of Thoughts (flows inside the chat thread) ──
+﻿/* â”€â”€ Chain of Thoughts (flows inside the chat thread) â”€â”€
    Rows are direct children of .chat-area, interleaved with the message
    bubbles in the order the model produced them. */
 
@@ -13,12 +13,12 @@
 .chat-area > .cot-item {
   animation: cot-fade-in 0.4s ease both;
   /* Off-screen rows skip layout/paint (and their infinite animations)
-     while the chain grows — big win on long reasoning phases. */
+     while the chain grows â€” big win on long reasoning phases. */
   content-visibility: auto;
   contain-intrinsic-size: auto 48px;
 }
 /* The thinking placeholder becomes the reasoning row (same element, no
-   swap) — don't replay the entrance animation on the morph. */
+   swap) â€” don't replay the entrance animation on the morph. */
 .chat-area > .cot-item.no-anim { animation: none; }
 
 @keyframes cot-fade-in {
@@ -59,8 +59,8 @@
 }
 
 .chat-area .cot-title {
-  flex: 1; font-size: 13px; font-weight: 500; color: var(--text-primary);
-  font-family: 'DM Sans', sans-serif;
+  flex: 1; font-size: 13px; font-weight: 400; color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
   min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -87,7 +87,7 @@
 .chat-area .cot-item.collapsed .cot-body { display: none; }
 
 .chat-area .cot-text {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 12px; font-weight: 400; color: var(--text-secondary);
   line-height: 1.6; white-space: pre-wrap; min-width: 0;
 }
@@ -96,7 +96,7 @@
   background: var(--accent-hover);
   padding: 1px 6px; border-radius: 4px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 700; color: var(--text-primary);
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
 }
 
 .chat-area .cot-item.reasoning.active .cot-title { color: var(--accent-color); }
@@ -119,17 +119,17 @@
 }
 
 /* Tool cards: icon + tool name + one-line title only. The tool name is
-   plain bold lowercase text — no chip/box background. */
+   plain bold lowercase text â€” no chip/box background. */
 .chat-area .cot-tool-name {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; font-weight: 800;
+  font-size: 11px; font-weight: 600;
   color: var(--text-secondary);
   flex-shrink: 0;
   text-transform: lowercase;
   letter-spacing: 0.01em;
 }
 
-/* Bash tool output streams right below the card — terminal block. */
+/* Bash tool output streams right below the card â€” terminal block. */
 .chat-area .cot-tool-output {
   display: none;
   margin: 2px 6px 2px 33px;
@@ -158,7 +158,7 @@
 
 /* Grouped exploration cards: the count text is the whole compact card.
    Hover makes it prominent (it is clickable); clicking toggles the light
-   detail below — just the per-call names, nothing heavier. */
+   detail below â€” just the per-call names, nothing heavier. */
 .chat-area .cot-item.tool.group .cot-title.group-toggle {
   cursor: pointer;
   transition: color 0.15s;
@@ -178,7 +178,7 @@
 .chat-area .cot-item.tool.group.open .cot-group-detail { display: flex; }
 .chat-area .cot-group-detail-item {
   font-size: 12px; color: var(--text-secondary);
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .chat-area .cot-group-detail-item.failed { color: var(--color-danger); }
@@ -188,7 +188,7 @@
 .chat-area .cot-placeholder {
   display: flex; align-items: center; gap: 9px;
   padding: 4px 6px;
-  font-family: 'DM Sans', sans-serif; font-size: 12.5px; color: var(--text-muted);
+  font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--text-muted);
   animation: cot-fade-in 0.3s ease both;
 }
 .chat-area .cot-placeholder .cot-dot { animation: cot-pulse 1.2s ease-in-out infinite; }
@@ -208,7 +208,7 @@
 .chat-area .cot-marker {
   display: flex; align-items: center; gap: 8px;
   padding: 3px 6px;
-  font-family: 'DM Sans', sans-serif; font-size: 11.5px; font-weight: 400;
+  font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 400;
   color: var(--text-muted); animation: cot-fade-in 0.3s ease both;
 }
 .chat-area .cot-marker-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
@@ -229,21 +229,21 @@
 }
 .chat-area .cot-subtask {
   display: flex; align-items: center; gap: 7px;
-  font-family: 'DM Sans', sans-serif; font-size: 11.5px; color: var(--text-muted);
+  font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-muted);
   animation: cot-fade-in 0.3s ease both;
 }
 .chat-area .cot-subtask .cot-dot { width: 7px; height: 7px; }
 .chat-area .cot-subtask.active .cot-dot { animation: cot-pulse 1.2s infinite; }
 .chat-area .cot-subtask.done .cot-dot { background: var(--color-success); }
 .chat-area .cot-subtask-agent {
-  font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 500;
   color: var(--text-secondary); flex-shrink: 0;
 }
 .chat-area .cot-subtask-desc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .chat-area .cot-subtask-tool {
   display: flex; align-items: center; gap: 7px;
-  font-family: 'DM Sans', sans-serif; font-size: 11.5px; color: var(--text-muted);
+  font-family: 'Inter', sans-serif; font-size: 11.5px; color: var(--text-muted);
   animation: cot-fade-in 0.3s ease both;
 }
 .chat-area .cot-subtask-tool .cot-ring { width: 8px; height: 8px; border-width: 1.5px; }
@@ -256,7 +256,7 @@
 .chat-area .cot-subtask-icon svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 
 .chat-area .cot-subtask-text {
-  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 400;
+  font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 400;
   color: var(--text-muted); line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }

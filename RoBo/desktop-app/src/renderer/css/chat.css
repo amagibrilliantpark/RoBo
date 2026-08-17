@@ -1,4 +1,4 @@
-/* ── Main: the floating inset workspace surface.
+﻿/* â”€â”€ Main: the floating inset workspace surface.
    Left edge flush with the sidebar's right edge (seam at 340px).
    Top gutter 48px (below the sidebar icon row), 6px right inset (the hidden
    270px right strip no longer reserves width), 6px bottom inset.
@@ -21,8 +21,8 @@
 }
 body.sb-collapsed .main { left: var(--surface-inset); }
 
-/* ── Scroll dots: sit in the workspace surface's left padding strip
-   (workspace edge 340px, chat text starts 36px later) — centered on the
+/* â”€â”€ Scroll dots: sit in the workspace surface's left padding strip
+   (workspace edge 340px, chat text starts 36px later) â€” centered on the
    boundary's middle height. Middle dot fully visible, outer dots dimmed. */
 .scroll-dots {
   position: fixed;
@@ -33,7 +33,7 @@ body.sb-collapsed .main { left: var(--surface-inset); }
   flex-direction: column;
   align-items: flex-start;
   gap: 11px;
-  z-index: 20;
+  z-index: 100;
   pointer-events: auto;
 }
 body.sb-collapsed .scroll-dots { left: calc(var(--surface-inset) + 8px); }
@@ -50,7 +50,7 @@ body.sb-collapsed .scroll-dots { left: calc(var(--surface-inset) + 8px); }
   opacity: 1;
 }
 
-/* ── Jump modal: hover the dots to list the session's user messages;
+/* â”€â”€ Jump modal: hover the dots to list the session's user messages;
    clicking one jumps straight to it. */
 .jump-modal {
   position: fixed;
@@ -65,7 +65,7 @@ body.sb-collapsed .scroll-dots { left: calc(var(--surface-inset) + 8px); }
   border: 1px solid var(--border-color);
   border-radius: 12px;
   box-shadow: 0 10px 34px var(--shadow-color), 0 4px 10px var(--shadow-color);
-  z-index: 40;
+  z-index: 101;
   overflow: hidden;
 }
 body.sb-collapsed .jump-modal { left: calc(var(--surface-inset) + 26px); }
@@ -85,7 +85,7 @@ body[data-theme="dark"] .jump-modal { background: #16202e; }
   width: 100%; text-align: left;
   padding: 12px 14px; border: none; border-radius: 9px;
   background: transparent; cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   transition: background 0.15s;
 }
 .jump-item:hover { background: var(--accent-hover); }
@@ -98,11 +98,11 @@ body[data-theme="dark"] .jump-modal { background: #16202e; }
   padding: 16px 14px; font-size: 13px; color: var(--text-muted);
 }
 
-/* ── Chat ── */
+/* â”€â”€ Chat â”€â”€ */
 .chat-area {
   flex: 1; overflow-y: auto; padding: 28px 36px 10px 36px;
   display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
-  /* The frame (`.main`) grew to the right edge — the MESSAGE COLUMN is the
+  /* The frame (`.main`) grew to the right edge â€” the MESSAGE COLUMN is the
      old frame width MINUS 80px of extra air (40px per side), centered in
      the widened surface so the left/right gaps stay equal. Explicit width
      = 100% so the auto margins CENTER it instead of collapsing it to
@@ -122,7 +122,7 @@ body[data-theme="dark"] .jump-modal { background: #16202e; }
 }
 .empty-state.active { display: flex; }
 .empty-state-icon { width: 52px; height: 52px; flex-shrink: 0; }
-.empty-state-text { font-family: 'Space Grotesk', sans-serif; font-size: 34px; font-weight: 600; letter-spacing: 2.5px; color: var(--text-primary); }
+.empty-state-text { font-family: 'Geist Sans', sans-serif; font-size: 34px; font-weight: 500; letter-spacing: 2.5px; color: var(--text-primary); }
 .empty-state-text em { font-style: normal; color: var(--accent-color); font-weight: 400; }
 
 .message { line-height: 1.6; font-size: 13.5px; font-weight: 500; }
@@ -141,7 +141,7 @@ body[data-theme="dark"] .jump-modal { background: #16202e; }
   overflow-x: auto; overflow-y: auto;
   max-height: 400px;
   font-size: 12.5px; line-height: 1.55;
-  font-family: 'SF Mono','Fira Code','Consolas',monospace; color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace; color: var(--text-primary);
   font-weight: 500;
   position: relative;
   width: calc(100vw - var(--sidebar-w) - 366px - 120px);
@@ -239,7 +239,7 @@ body[data-theme="dark"] .ai-message pre code .code-line.diff-remove {
 
 .user-message .msg-card {
   background: var(--bg-panel); border: 1px solid var(--border-color);
-  border-radius: 12px; padding: 10px 16px; color: var(--text-primary); font-weight: 500; font-family: 'DM Sans', sans-serif;
+  border-radius: 12px; padding: 10px 16px; color: var(--text-primary); font-weight: 400; font-family: 'Inter', sans-serif;
   transition: box-shadow 0.2s;
 }
 
@@ -277,7 +277,7 @@ body[data-theme="dark"] .ai-message pre code .code-line.diff-remove {
   display: flex;
 }
 
-/* ── Edit Mode Styles ── */
+/* â”€â”€ Edit Mode Styles â”€â”€ */
 /* In edit mode the card widens to use the horizontal space first
    (instead of staying as narrow as the message and growing downward). */
 .user-message.edit-mode {
@@ -315,9 +315,9 @@ body[data-theme="dark"] .ai-message pre code .code-line.diff-remove {
   background: transparent;
   border: none;
   outline: none;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text-primary);
   line-height: 1.5;
   padding: 0;
@@ -389,7 +389,7 @@ body[data-theme="dark"] .ai-message pre code .code-line.diff-remove {
   display: none !important;
 }
 
-/* ── Streaming cursor ── */
+/* â”€â”€ Streaming cursor â”€â”€ */
 .streaming-cursor {
   display: inline-block;
   width: 2px;

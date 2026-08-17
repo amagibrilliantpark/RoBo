@@ -1,4 +1,4 @@
-/* ── Question Modal ── */
+﻿/* â”€â”€ Question Modal â”€â”€ */
 .question-modal {
     background: var(--bg-modal);
     border: 1px solid var(--border-color);
@@ -47,9 +47,9 @@
 }
 
 .qm-top-label {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-muted);
     padding: 6px 12px;
     border-radius: 7px;
@@ -64,7 +64,7 @@
 .qm-top-label.active {
     color: var(--accent-color);
     background: var(--accent-hover);
-    font-weight: 700;
+    font-weight: 500;
 }
 .qm-top-label.answered {
     color: var(--text-muted);
@@ -74,9 +74,9 @@
     padding: 18px 18px 10px 18px;
 }
 .qm-title {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--text-primary);
     letter-spacing: -0.1px;
 }
@@ -106,9 +106,9 @@
     border-radius: 6px;
     background: var(--border-color);
     color: var(--text-secondary);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -119,10 +119,10 @@
     color: #fff;
 }
 .qm-label {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     flex: 1;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-primary);
     line-height: 1.35;
 }
@@ -148,17 +148,17 @@
 }
 
 .qm-confirm-label {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-muted);
     min-width: 64px;
     flex-shrink: 0;
 }
 .qm-confirm-value {
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-primary);
     flex: 1;
 }
@@ -184,9 +184,9 @@
     border-radius: 8px;
     border: 1px solid var(--border-color);
     background: var(--bg-input);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-secondary);
     cursor: pointer;
 }
@@ -199,9 +199,9 @@
     border-radius: 8px;
     border: none;
     background: var(--accent-color);
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 400;
     color: #fff;
     cursor: pointer;
 }
@@ -247,9 +247,9 @@
     border: none;
     outline: none;
     background: transparent;
-    font-family: "DM Sans", sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 400;
     color: var(--text-primary);
     padding: 6px 0;
     line-height: 1.4;

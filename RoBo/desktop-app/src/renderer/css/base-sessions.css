@@ -1,14 +1,14 @@
-.session-list::-webkit-scrollbar { width: 3px; }
+﻿.session-list::-webkit-scrollbar { width: 3px; }
 .session-list::-webkit-scrollbar-track { background: transparent; }
 .session-list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
 
 .session-section-label {
-  font-family: 'Manrope', sans-serif; font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; padding: 10px 10px 4px 10px; user-select: none;
+  font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; padding: 10px 10px 4px 10px; user-select: none;
 }
 
 .sessions-label {
-  font-family: 'Space Grotesk', sans-serif; text-transform: none; letter-spacing: 0px;
-  font-size: 13.5px; font-weight: 700; color: var(--text-secondary);
+  font-family: 'Manrope', sans-serif; text-transform: none; letter-spacing: -0.5px;
+  font-size: 16px; font-weight: 300; color: var(--text-primary);
   display: flex; align-items: center; gap: 8px;
   padding: 14px 10px 6px 10px;
 }
@@ -25,16 +25,16 @@
 .sessions-collapse.rotated svg { transform: rotate(180deg); }
 
 /* Session cards hang under the "Sessions" text: they are indented from
-   the left, and the reserved gutter is where the attach pin sits — so the
+   the left, and the reserved gutter is where the attach pin sits â€” so the
    title never moves when a session gets pinned. */
 #attachedSessions, #normalSessions { padding-left: 30px; }
 body.sessions-collapsed #attachedSessions,
 body.sessions-collapsed #normalSessions { display: none; }
 
-.session-card { padding: 11px 12px; border-radius: 7px; background: transparent; border: none; cursor: pointer; transition: background 0.14s; display: flex; align-items: center; justify-content: space-between; position: relative; }
+.session-card { padding: 13px 14px; border-radius: 8px; background: transparent; border: none; cursor: pointer; transition: background 0.14s; display: flex; align-items: center; justify-content: space-between; position: relative; }
 .session-card:hover { background: var(--accent-hover); }
 .session-card.active { background: var(--accent-hover); }
-.sc-title { font-family: 'Manrope', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.1px; flex: 1; }
+.sc-title { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 400; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.1px; flex: 1; }
 
 .sc-pin {
   position: absolute; left: -22px; top: 50%; transform: translateY(-50%);
@@ -44,7 +44,7 @@ body.sessions-collapsed #normalSessions { display: none; }
 .sc-pin svg { width: 13px; height: 13px; }
 
 .sc-title-input {
-  font-family: 'Manrope', sans-serif; font-size: 13.5px; font-weight: 600; color: var(--text-primary); border: none; outline: none; background: transparent; border-radius: 0; padding: 0; margin: 0; flex: 1; min-width: 0; box-shadow: none; -webkit-appearance: none; appearance: none; letter-spacing: -0.1px;
+  font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 400; color: var(--text-primary); border: none; outline: none; background: transparent; border-radius: 0; padding: 0; margin: 0; flex: 1; min-width: 0; box-shadow: none; -webkit-appearance: none; appearance: none; letter-spacing: -0.1px;
 }
 .sc-title-input::selection { background: var(--accent-hover); color: var(--text-primary); }
 
@@ -62,14 +62,14 @@ body.sessions-collapsed #normalSessions { display: none; }
 }
 .session-menu.active { display: block; }
 .session-menu-item {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 7px; border: none; background: transparent; width: 100%; font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--text-primary); cursor: pointer; transition: background 0.12s;
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 7px; border: none; background: transparent; width: 100%; font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 400; color: var(--text-primary); cursor: pointer; transition: background 0.12s;
 }
 .session-menu-item:hover { background: var(--accent-hover); }
 .session-menu-item svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; flex-shrink: 0; }
 .session-menu-item.danger { color: var(--color-danger); }
 .session-menu-item.danger:hover { background: var(--color-danger-bg); }
 
-/* ── Quick action cards (New Chat / Settings) — sit above the sessions
+/* â”€â”€ Quick action cards (New Chat / Settings) â€” sit above the sessions
    list. Same box, height, type rhythm as session cards (no extra
    horizontal inset); a denser resting tone sets them apart. */
 .quick-actions {
@@ -77,14 +77,14 @@ body.sessions-collapsed #normalSessions { display: none; }
   display: flex; flex-direction: column; gap: 3px;
 }
 .qa-card {
-  display: flex; align-items: center; gap: 10px;
-  padding: 11px 12px; border-radius: 7px;
+  display: flex; align-items: center; gap: 11px;
+  padding: 13px 14px; border-radius: 8px;
   background: transparent; border: none; cursor: pointer;
   font-family: 'Manrope', sans-serif;
-  font-size: 13.5px; font-weight: 700; color: var(--text-primary);
-  letter-spacing: -0.1px;
+  font-size: 15.5px; font-weight: 300; color: var(--text-primary);
+  letter-spacing: -0.5px;
   transition: background 0.14s;
 }
 .qa-card:hover { background: var(--quick-card-bg); }
-.qa-card svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--text-secondary); }
+.qa-card svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--text-secondary); }
 .qa-card:hover svg { color: var(--text-primary); }
