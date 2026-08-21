@@ -294,7 +294,15 @@ document.addEventListener('DOMContentLoaded', () => {
     e.stopPropagation();
     const wasOpen = modelPopup.classList.contains('active');
     closeAllPopups();
-    if (!wasOpen) modelPopup.classList.add('active');
+    if (!wasOpen) {
+      modelPopup.classList.add('active');
+      const searchInput = modelPopup.querySelector('#modelSearch');
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.dispatchEvent(new Event('input'));
+        setTimeout(() => searchInput.focus(), 0);
+      }
+    }
   });
 
   // ── Close popups on outside click ──

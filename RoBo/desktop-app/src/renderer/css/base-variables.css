@@ -9,6 +9,7 @@
   --bg-sidebar: rgba(255,255,255,0.58);
   --bg-panel: rgba(250,250,253,0.92);
   --bg-modal: #fbfbfd;
+  --bg-modal-settings: #eef1f6;
   --bg-input: rgba(246,246,249,0.78);
   --text-primary: #18283a;
   --text-secondary: #4a5a6a;
@@ -35,6 +36,11 @@
   --color-diff-add: #2e8b57;
   --color-diff-remove: #c0392b;
   --color-diff-context: #6a849e;
+  --color-warning-bg: rgba(230,124,34,0.08);
+  --border-color-soft: rgba(180,210,240,0.55);
+  --accent-soft: rgba(78,135,187,0.08);
+  --color-success-bg: rgba(46,139,87,0.10);
+  --color-danger-bg: rgba(192,57,43,0.10);
   --overlay-bg: rgba(0,0,0,0.30);
 }
 
@@ -44,6 +50,7 @@ body[data-theme="dark"] {
   --bg-sidebar: rgba(22,32,48,0.85);
   --bg-panel: rgba(22,32,48,0.70);
   --bg-modal: #162030;
+  --bg-modal-settings: #162030;
   --bg-input: rgba(22,32,48,0.60);
   --text-primary: #ffffff;
   --text-secondary: #b0c0d0;
@@ -77,5 +84,10 @@ body[data-theme="dark"] {
   --color-diff-add: #2ecc71;
   --color-diff-remove: #e74c3c;
   --color-diff-context: #8aa0b8;
+  --color-warning-bg: rgba(243,156,18,0.12);
+  --border-color-soft: rgba(42,58,74,0.55);
+  --accent-soft: rgba(232,98,26,0.08);
+  --color-success-bg: rgba(46,204,113,0.12);
+  --color-danger-bg: rgba(231,76,60,0.12);
   --overlay-bg: rgba(0,0,0,0.30);
 }

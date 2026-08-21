@@ -15,37 +15,169 @@
       : M.PM.connectedProviders || [];
 
     container.innerHTML = "";
+
+    // Search input (command-style, fixed at top)
+    const searchWrap = document.createElement("div");
+    searchWrap.className = "provider-popup-search";
+    const search = document.createElement("input");
+    search.className = "provider-search-input";
+    search.type = "text";
+    search.id = "providerSearch";
+    search.placeholder = "Search providers...";
+    search.autocomplete = "off";
+    search.spellcheck = false;
+    searchWrap.appendChild(search);
+    container.appendChild(searchWrap);
+
+    const listWrap = document.createElement("div");
+    listWrap.className = "provider-list-scroll";
+    container.appendChild(listWrap);
+
+    const connected = [];
+    const others = [];
     for (const id of ids) {
-      const detail = M.PM.providersAllDetails ? M.PM.providersAllDetails[id] : null;
-      const meta = detail && detail.name ? { name: detail.name } : M.getProviderMeta(id);
-      const methods = M.PM.authMethods[id] || [];
-      const connected = connectedIds.includes(id);
-
-      const item = document.createElement("button");
-      item.className = "provider-item";
-      item.dataset.id = id;
-
-      const connectedMark = connected
-        ? `<span class="provider-item-connected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>`
-        : "";
-
-      item.innerHTML = `<span class="provider-item-label">${meta.name} ${connectedMark}</span>`;
-
-      item.addEventListener("click", () => M.selectProvider(id, methods, meta));
-      container.appendChild(item);
+      if (connectedIds.includes(id)) connected.push(id);
+      else others.push(id);
     }
 
-    const otherItem = document.createElement("button");
-    otherItem.className = "provider-item provider-item-other";
-    otherItem.innerHTML = "Other";
-    otherItem.addEventListener("click", () => M.openCustomProvider());
-    container.appendChild(otherItem);
+    function buildCard(id, isConnected) {
+      const detail = M.PM.providersAllDetails ? M.PM.providersAllDetails[id] : null;
+      const meta = detail && detail.name
+        ? { name: detail.name, color: detail.color }
+        : M.getProviderMeta(id);
+      const name = (detail && detail.name) || meta.name;
+
+      const card = document.createElement("button");
+      card.className = "provider-card";
+      card.dataset.id = id;
+      card.dataset.name = name.toLowerCase();
+
+      const avatar = document.createElement("span");
+      avatar.className = "provider-card-avatar";
+      avatar.style.background = meta.color;
+      avatar.textContent = name.charAt(0).toUpperCase();
+
+      const body = document.createElement("span");
+      body.className = "provider-card-body";
+
+      const nameEl = document.createElement("span");
+      nameEl.className = "provider-card-name";
+      nameEl.textContent = name;
+
+      const status = document.createElement("span");
+      status.className = "provider-card-status" + (isConnected ? " connected" : "");
+      status.textContent = isConnected ? "Connected" : "Tap to connect";
+
+      body.appendChild(nameEl);
+      body.appendChild(status);
+      card.appendChild(avatar);
+      card.appendChild(body);
+
+      card.addEventListener("click", () =>
+        M.selectProvider(id, M.PM.authMethods[id] || [], meta),
+      );
+      return card;
+    }
+
+    function appendGroup(title, items) {
+      const header = document.createElement("div");
+      header.className = "provider-group-header";
+      header.textContent = title;
+      listWrap.appendChild(header);
+      const grid = document.createElement("div");
+      grid.className = "provider-card-grid";
+      items.forEach((id) => grid.appendChild(buildCard(id, title === "Connected")));
+      listWrap.appendChild(grid);
+    }
+
+    if (connected.length) appendGroup("Connected", connected);
+    if (others.length) appendGroup("Custom", others);
+
+    const customBtn = document.createElement("button");
+    customBtn.className = "provider-custom-btn";
+    customBtn.dataset.name = "other custom";
+    customBtn.innerHTML =
+      '<span class="provider-custom-plus">+</span><span>Custom Provider</span>';
+    customBtn.addEventListener("click", () => M.openCustomProvider());
+    listWrap.appendChild(customBtn);
+
+    // Filter providers by name; hide empty groups
+    search.addEventListener("input", () => {
+      const q = search.value.trim().toLowerCase();
+      listWrap.querySelectorAll(".provider-card").forEach((card) => {
+        const name = card.dataset.name || "";
+        card.style.display = !q || name.includes(q) ? "" : "none";
+      });
+      listWrap.querySelectorAll(".provider-group-header").forEach((g) => {
+        let next = g.nextElementSibling;
+        let visible = false;
+        while (
+          next &&
+          !next.classList.contains("provider-group-header") &&
+          !next.classList.contains("provider-custom-btn")
+        ) {
+          if (next.classList.contains("provider-card") && next.style.display !== "none") {
+            visible = true;
+          }
+          next = next.nextElementSibling;
+        }
+        g.style.display = visible ? "" : "none";
+      });
+    });
+  }
+
+  function setDetailHeader(opts) {
+    const avatar = M.el("providerDetailAvatar");
+    if (opts.showAvatar === false) {
+      avatar.style.display = "none";
+    } else {
+      avatar.style.display = "";
+      avatar.style.background = opts.color || "#8a93a6";
+      avatar.textContent = (opts.char || "?").toUpperCase();
+    }
+    M.el("providerDetailKicker").textContent = opts.kicker || "";
+    M.el("providerDetailTitle").textContent = opts.title || "";
+    const steps = M.el("providerDetailSteps");
+    if (opts.steps) {
+      steps.style.display = "";
+      steps.querySelectorAll(".provider-step").forEach((d, i) => {
+        d.classList.toggle("active", i < (opts.activeStep || 1));
+      });
+    } else {
+      steps.style.display = "none";
+    }
+  }
+
+  const ARROW_SVG =
+    '<svg class="provider-btn-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h9M9 4l4 4-4 4"/></svg>';
+  function connectLabel(text) {
+    return `<span>${text}</span>${ARROW_SVG}`;
+  }
+  M.connectLabel = connectLabel;
+
+  function setupKeyToggles() {
+    const pairs = [
+      ["providerKeyToggle", "providerKeyInput"],
+      ["providerCustomKeyToggle", "providerCustomKey"],
+    ];
+    pairs.forEach(([btnId, inputId]) => {
+      const btn = document.getElementById(btnId);
+      const input = document.getElementById(inputId);
+      if (!btn || !input) return;
+      btn.addEventListener("click", () => {
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+        const eye = btn.querySelector(".icon-eye");
+        const eyeOff = btn.querySelector(".icon-eye-off");
+        if (eye) eye.style.display = show ? "none" : "";
+        if (eyeOff) eyeOff.style.display = show ? "" : "none";
+      });
+    });
   }
 
   function openCustomProvider() {
     M.PM.selectedProvider = "__custom__";
     M.PM.customStep = 1;
-    M.el("providerDetailTitle").textContent = "Custom Provider";
     M.el("providerList").classList.remove("active");
     M.el("providerList").classList.add("hidden");
     M.el("providerDetail").classList.add("active");
@@ -55,6 +187,14 @@
     document.getElementById("providerDetailCustom").classList.add("active");
     document.getElementById("providerDetailDefault").classList.remove("active");
 
+    setDetailHeader({
+      kicker: "Custom Provider",
+      title: "Custom Provider",
+      color: "#8a93a6",
+      char: "C",
+      steps: true,
+      activeStep: 1,
+    });
     M.showCustomStep(1);
   }
 
@@ -69,7 +209,7 @@
       keyRow.style.display = "none";
       M.el("providerCustomId").value = "";
       M.el("providerCustomId").focus();
-      connectBtn.innerHTML = "<span>Next</span>";
+      connectBtn.innerHTML = M.connectLabel("Next");
       connectBtn.disabled = false;
       connectBtn.classList.remove("loading");
     } else {
@@ -78,9 +218,18 @@
       M.el("providerCustomIdDisplay").textContent = M.PM.customProviderId;
       M.el("providerCustomKey").value = "";
       M.el("providerCustomKey").focus();
-      connectBtn.innerHTML = "<span>Connect</span>";
+      connectBtn.innerHTML = M.connectLabel("Connect");
       connectBtn.disabled = false;
       connectBtn.classList.remove("loading");
+      const id = M.PM.customProviderId;
+      setDetailHeader({
+        kicker: "Custom Provider",
+        title: id || "Custom Provider",
+        color: "#8a93a6",
+        char: (id || "C").charAt(0),
+        steps: true,
+        activeStep: 2,
+      });
     }
   }
 
@@ -145,7 +294,18 @@
       window.App.getConnectedProviderIds &&
       window.App.getConnectedProviderIds().includes(id);
 
-    M.el("providerDetailTitle").textContent = meta.name;
+    const kicker = isConnected
+      ? "Connected"
+      : oauthMethodIndex !== -1
+        ? "OAuth"
+        : "API Key";
+    setDetailHeader({
+      kicker,
+      title: meta.name,
+      color: meta.color,
+      char: meta.name.charAt(0),
+      steps: false,
+    });
     M.el("providerList").classList.remove("active");
     M.el("providerList").classList.add("hidden");
     M.el("providerDetail").classList.add("active");
@@ -232,7 +392,7 @@
 
     connectBtn.disabled = false;
     connectBtn.classList.remove("loading");
-    connectBtn.innerHTML = "<span>Connect</span>";
+    connectBtn.innerHTML = M.connectLabel("Connect");
   }
 
   function showListView() {
@@ -266,6 +426,7 @@
 
   M.renderProviderList = renderProviderList;
   M.openCustomProvider = openCustomProvider;
+  setupKeyToggles();
   M.showCustomStep = showCustomStep;
   M.renderExtraPrompts = renderExtraPrompts;
   M.collectExtraPromptValues = collectExtraPromptValues;

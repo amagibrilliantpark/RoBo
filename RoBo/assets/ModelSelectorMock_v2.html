@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RoBo — Model Selector Design Mock v2</title>
+<style>
+  /* ── RoBo LIGHT theme tokens (unchanged from original) ── */
+  :root {
+    --bg-primary: #f5f7fa;
+    --bg-modal: #fbfbfd;
+    --bg-input: rgba(246,246,249,0.78);
+    --text-primary: #18283a;
+    --text-secondary: #4a5a6a;
+    --text-muted: #7a8a9a;
+    --border-color: rgb(180,210,240);
+    --border-color-soft: rgba(180,210,240,0.55);
+    --accent-color: #4e87bb;
+    --accent-hover: rgba(210,230,250,0.50);
+    --accent-soft: rgba(78,135,187,0.08);
+    --shadow-color: rgba(160,200,235,0.09);
+    --scrollbar-thumb: rgba(160, 200, 235, 0.30);
+    --overlay-bg: rgba(0,0,0,0.30);
+    --color-success: #2e8b57;
+    --color-success-bg: rgba(46,139,87,0.10);
+    --color-danger: #c0392b;
+    --color-danger-bg: rgba(192,57,43,0.10);
+    --color-warning: #e67e22;
+    --color-warning-bg: rgba(230,124,34,0.08);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    padding: 40px 24px 80px;
+  }
+  .page-title {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.5px;
+    color: var(--text-muted); text-transform: uppercase;
+    max-width: 680px; margin: 0 auto 8px;
+  }
+  .page-sub {
+    font-size: 12px; color: var(--text-muted); max-width: 680px; margin: 0 auto 28px; line-height: 1.5;
+  }
+  .section { max-width: 680px; margin: 0 auto 56px; }
+  .section-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.6px;
+    color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px;
+  }
+  .section-note {
+    font-size: 11.5px; color: var(--accent-color); margin: -6px 0 14px; line-height: 1.5;
+    background: var(--accent-soft); padding: 8px 12px; border-radius: 8px;
+  }
+  .stage {
+    display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;
+  }
+  .surface { position: relative; }
+
+  /* ── Trigger (closed model selector) — unchanged ── */
+  .selector-btn {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 8px;
+    border: 1px solid transparent; background: transparent;
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 400;
+    color: var(--text-secondary); cursor: pointer; user-select: none;
+  }
+  .selector-btn:hover { background: var(--accent-hover); border-color: var(--accent-color); }
+  .selector-logo {
+    width: 16px; height: 16px; flex-shrink: 0; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #fff; text-transform: uppercase;
+  }
+  .selector-label { color: var(--text-primary); }
+
+  /* ── Model popup (command palette) ── */
+  .popup-menu {
+    position: static;
+    display: flex; flex-direction: column;
+    background: var(--bg-modal); border: 1px solid var(--border-color);
+    border-radius: 12px; padding: 0;
+    box-shadow: 0 4px 18px var(--shadow-color), 0 2px 6px var(--shadow-color);
+    min-width: 340px; max-height: 400px; overflow: hidden;
+  }
+  .model-popup-search {
+    padding: 10px 12px 8px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+  }
+  .model-search-input {
+    width: 100%; border: none; outline: none; background: transparent;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 400; color: var(--text-primary);
+  }
+  .model-search-input::placeholder { color: var(--text-muted); }
+  .model-popup-list {
+    flex: 1; overflow-y: auto; min-height: 0; padding: 4px 6px 6px;
+  }
+  .model-popup-list::-webkit-scrollbar { width: 3px; }
+  .model-popup-list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
+
+  .model-group-header {
+    font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px;
+    padding: 12px 14px 4px; margin-top: 2px;
+  }
+  .model-group-header:first-child { padding-top: 4px; margin-top: 0; }
+
+  .popup-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; border-radius: 8px; white-space: nowrap;
+    font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 400;
+    color: var(--text-primary); cursor: pointer; transition: background 0.12s;
+  }
+  .popup-item:hover { background: var(--accent-hover); }
+  .popup-item.selected { color: var(--accent-color); }
+  .popup-item.expanded { color: var(--accent-color); }
+
+  .model-item-logo {
+    width: 16px; height: 16px; flex-shrink: 0; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #fff; text-transform: uppercase;
+  }
+  .model-item-name {
+    flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .model-item-right {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+  }
+  .model-item-chevron { color: var(--text-muted); display: flex; transition: transform 0.12s; }
+  .model-item-chevron svg { width: 14px; height: 14px; }
+  .popup-item.expanded .model-item-chevron { transform: rotate(90deg); }
+  .model-item-check { width: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--accent-color); opacity: 0; }
+  .model-item-check svg { width: 15px; height: 15px; }
+  .popup-item.selected .model-item-check { opacity: 1; }
+
+  .model-popup-footer {
+    padding: 4px 6px 6px; border-top: 1px solid var(--border-color); flex-shrink: 0;
+  }
+  .model-popup-add {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 9px 14px; border: none; background: transparent; border-radius: 8px;
+    font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 400;
+    color: var(--text-secondary); cursor: pointer; text-align: left; transition: background 0.12s, color 0.12s;
+  }
+  .model-popup-add:hover { background: var(--accent-hover); color: var(--accent-color); }
+  .model-add-icon {
+    width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+  }
+  .model-add-icon svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .model-popup-add:hover .model-add-icon { color: var(--accent-color); }
+
+  /* ══════════════════════════════════════════════════════════
+     NEW — VARIANT SELECTION AS INLINE SEGMENTED CHIPS
+     Instead of expanding into indented sub-rows that push the
+     whole list down and add a second visual language (dots),
+     the variant picker lives *inside* the model row as a small
+     segmented control. One row, one interaction, no layout jump.
+     ══════════════════════════════════════════════════════════ */
+  .popup-item.has-variants { flex-wrap: wrap; }
+  .model-variant-group {
+    display: flex; align-items: center; gap: 2px;
+    background: var(--bg-input); border: 1px solid var(--border-color-soft);
+    border-radius: 7px; padding: 2px; flex-shrink: 0;
+  }
+  .model-variant-chip {
+    padding: 3px 8px; border-radius: 5px; border: none; background: transparent;
+    font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 500;
+    color: var(--text-muted); cursor: pointer; white-space: nowrap; transition: background 0.12s, color 0.12s;
+    letter-spacing: 0.1px;
+  }
+  .model-variant-chip:hover { color: var(--text-secondary); }
+  .model-variant-chip.active { background: var(--bg-modal); color: var(--accent-color); box-shadow: 0 1px 3px var(--shadow-color); font-weight: 600; }
+
+  /* ── Provider modal — shell (border radius / shadow unchanged) ── */
+  .provider-modal {
+    width: 100%; max-width: 560px; background: var(--bg-modal);
+    border: 1px solid var(--border-color); border-radius: 16px;
+    box-shadow: 0 24px 64px var(--shadow-color), 0 4px 12px var(--shadow-color);
+    max-height: 82vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .provider-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+  }
+  .provider-modal-title-group { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .provider-modal-title { font-size: 15px; font-weight: 500; color: var(--text-primary); }
+  .provider-modal-close {
+    width: 30px; height: 30px; border-radius: 8px; border: none; background: transparent;
+    color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .provider-modal-close:hover { background: var(--accent-hover); color: var(--accent-color); }
+
+  /* ══════════════════════════════════════════════════════════
+     NEW — ADD PROVIDER: LIST VIEW
+     Old: flat text rows in a plain list — no grouping, the
+     "Connected" state was a tiny green check easy to miss, and
+     "Other / Custom" looked like just another provider.
+     New: providers are grouped by connection state, each row
+     is a proper card with room for a status pill, and Custom
+     is broken out into its own footer action instead of hiding
+     in the list.
+     ══════════════════════════════════════════════════════════ */
+  .provider-popup-search {
+    padding: 12px 14px; border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .provider-search-icon { color: var(--text-muted); flex-shrink: 0; display: flex; }
+  .provider-search-icon svg { width: 15px; height: 15px; }
+  .provider-search-input {
+    width: 100%; border: none; outline: none; background: transparent;
+    font-size: 13px; font-weight: 400; color: var(--text-primary);
+  }
+  .provider-search-input::placeholder { color: var(--text-muted); }
+
+  .provider-list-scroll {
+    flex: 1; overflow-y: auto; padding: 10px 14px 14px; min-height: 0;
+  }
+  .provider-list-group-label {
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase;
+    color: var(--text-muted); padding: 10px 4px 8px;
+  }
+  .provider-list-group-label:first-child { padding-top: 2px; }
+  .provider-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .provider-card {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border-color-soft); background: var(--bg-input);
+    cursor: pointer; text-align: left; width: 100%; transition: border-color 0.12s, background 0.12s, transform 0.08s;
+  }
+  .provider-card:hover { border-color: var(--accent-color); background: var(--accent-soft); }
+  .provider-card:active { transform: scale(0.98); }
+  .provider-card.connected { border-color: rgba(46,139,87,0.35); background: var(--color-success-bg); }
+  .provider-avatar {
+    width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff; text-transform: uppercase;
+  }
+  .provider-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .provider-card-name { font-size: 12.5px; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .provider-card-status { font-size: 10px; color: var(--color-success); font-weight: 500; }
+
+  .provider-modal-footer {
+    padding: 10px 14px; border-top: 1px solid var(--border-color); flex-shrink: 0;
+  }
+  .provider-custom-btn {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--border-color);
+    background: transparent; cursor: pointer; text-align: left; transition: border-color 0.12s, background 0.12s;
+  }
+  .provider-custom-btn:hover { border-color: var(--accent-color); background: var(--accent-soft); }
+  .provider-custom-icon {
+    width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--bg-modal); border: 1px solid var(--border-color); color: var(--accent-color);
+  }
+  .provider-custom-icon svg { width: 14px; height: 14px; }
+  .provider-custom-text { display: flex; flex-direction: column; gap: 1px; }
+  .provider-custom-title { font-size: 12.5px; font-weight: 500; color: var(--text-primary); }
+  .provider-custom-sub { font-size: 10.5px; color: var(--text-muted); }
+
+  /* ══════════════════════════════════════════════════════════
+     NEW — PROVIDER DETAIL / CONNECT SCREENS
+     Old: bare header + hint + input, no sense of provenance
+     (which provider you're in) beyond a text title, warning
+     box read as an error, key input had no affordance for a
+     secret value.
+     New: provider identity (logo) carried into the detail
+     header, a lightweight step indicator for the 2-step custom
+     flow, a proper secret-input treatment, calmer info/warning
+     styling that matches severity.
+     ══════════════════════════════════════════════════════════ */
+  .provider-detail {
+    display: flex; flex-direction: column; gap: 16px; padding: 20px; overflow-y: auto; min-height: 0;
+  }
+  .provider-detail-header { display: flex; align-items: center; gap: 10px; }
+  .provider-detail-back {
+    width: 28px; height: 28px; border-radius: 7px; border: none; background: transparent;
+    color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
+  }
+  .provider-detail-back:hover { background: var(--accent-hover); color: var(--accent-color); }
+  .provider-detail-back svg { width: 16px; height: 16px; }
+  .provider-detail-avatar {
+    width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #fff;
+  }
+  .provider-detail-title-group { display: flex; flex-direction: column; gap: 0px; min-width: 0; }
+  .provider-detail-title { font-size: 14.5px; font-weight: 600; color: var(--text-primary); }
+  .provider-detail-kicker { font-size: 10.5px; color: var(--text-muted); }
+
+  .provider-step-track { display: flex; align-items: center; gap: 6px; padding: 0 2px; }
+  .provider-step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-color); transition: background 0.15s, width 0.15s; }
+  .provider-step-dot.active { background: var(--accent-color); width: 16px; border-radius: 3px; }
+  .provider-step-dot.done { background: var(--color-success); }
+
+  .provider-detail-hint { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+  .provider-field-group { display: flex; flex-direction: column; gap: 8px; }
+  .provider-detail-label { font-size: 12.5px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; }
+  .provider-detail-label-optional { font-weight: 400; color: var(--text-muted); font-size: 11px; }
+
+  .provider-key-field { position: relative; display: flex; align-items: center; }
+  .provider-key-input {
+    width: 100%; padding: 12px 40px 12px 14px; border-radius: 10px; border: 1px solid var(--border-color);
+    background: var(--bg-input); font-size: 13px; font-family: 'SF Mono', 'Menlo', monospace; letter-spacing: 0.3px;
+    color: var(--text-primary); outline: none;
+  }
+  .provider-key-input::placeholder { color: var(--text-muted); font-family: 'Inter', sans-serif; font-weight: 400; letter-spacing: normal; }
+  .provider-key-input:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px var(--accent-hover); }
+  .provider-key-toggle {
+    position: absolute; right: 6px; width: 28px; height: 28px; border-radius: 7px; border: none;
+    background: transparent; color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .provider-key-toggle:hover { background: var(--accent-hover); color: var(--accent-color); }
+  .provider-key-toggle svg { width: 16px; height: 16px; }
+
+  .provider-btn-connect {
+    align-self: flex-start; padding: 10px 22px; border-radius: 10px; border: none;
+    background: var(--accent-color); font-size: 13px; font-weight: 500; color: #fff; cursor: pointer;
+    display: flex; align-items: center; gap: 8px; transition: filter 0.12s;
+  }
+  .provider-btn-connect:hover { filter: brightness(1.06); }
+  .provider-btn-connect svg { width: 14px; height: 14px; }
+  .spacer { flex: 1; }
+
+  .provider-detail-note {
+    font-size: 11.5px; color: var(--text-secondary); line-height: 1.55;
+    padding: 10px 12px; border-radius: 10px; background: var(--accent-soft);
+    border: 1px solid transparent; display: flex; gap: 8px;
+  }
+  .provider-detail-note svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; color: var(--accent-color); }
+  .provider-detail-warning { background: var(--color-warning-bg); }
+  .provider-detail-warning svg { color: var(--color-warning); }
+  .provider-detail-warning strong { color: var(--text-primary); }
+  .provider-detail-warning a { color: var(--accent-color); text-decoration: none; }
+  .provider-detail-note-text a { color: var(--accent-color); text-decoration: none; }
+
+  /* ── Connected / actions / success ── */
+  .provider-detail-connected { display: flex; flex-direction: column; gap: 16px; }
+  .provider-connected-badge {
+    display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+    padding: 7px 14px 7px 10px; border-radius: 999px; background: var(--color-success-bg); color: var(--color-success);
+    font-size: 12.5px; font-weight: 500; border: 1px solid rgba(46,139,87,0.25);
+  }
+  .provider-connected-badge svg { width: 14px; height: 14px; }
+  .provider-detail-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .provider-btn-disconnect {
+    padding: 10px 18px; border-radius: 10px; border: 1px solid var(--border-color);
+    background: var(--bg-input); font-size: 12.5px; font-weight: 500; color: var(--text-secondary); cursor: pointer;
+  }
+  .provider-btn-disconnect:hover { background: var(--accent-hover); }
+  .provider-btn-remove {
+    padding: 10px 18px; border-radius: 10px; border: 1px solid rgba(192,57,43,0.3);
+    background: var(--color-danger-bg); font-size: 12.5px; font-weight: 500; color: var(--color-danger); cursor: pointer;
+  }
+  .provider-btn-remove:hover { background: rgba(192,57,43,0.16); }
+  .provider-success {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 44px 20px;
+  }
+  .provider-success-icon-wrap {
+    width: 52px; height: 52px; border-radius: 50%; background: var(--color-success-bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .provider-success-icon { width: 24px; height: 24px; color: var(--color-success); }
+  .provider-success-text { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .provider-success-sub { font-size: 12.5px; color: var(--text-muted); text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="page-title">RoBo — Model Selector &amp; Add Provider — Revised</div>
+<div class="page-sub">Değişenler: (1) Add Provider modalı artık grid kart + gruplama + ayrı Custom aksiyonu · (2) provider ekleme ekranları kimlik/step göstergesi ve secret-input ile · (3) variant seçimi ayrı satırlar yerine model satırının içinde segmented chip olarak.</div>
+
+<!-- ── 1. MODEL SELECTOR ── -->
+<div class="section">
+  <div class="section-label">1 · Model Selector — trigger + popup (variant chips inline)</div>
+
+  <div class="stage">
+    <div class="surface">
+      <button class="selector-btn">
+        <span class="selector-logo" style="background:#19c37d">O</span>
+        <span class="selector-label">GPT-4o</span>
+      </button>
+    </div>
+
+    <div class="surface">
+      <div class="popup-menu" id="modelPopup">
+        <div class="model-popup-search">
+          <input class="model-search-input" placeholder="Search models..." value="" />
+        </div>
+
+        <div class="model-popup-list">
+          <div class="model-group-header">OpenAI</div>
+
+          <div class="popup-item selected">
+            <span class="model-item-logo" style="background:#19c37d">O</span>
+            <span class="model-item-name">GPT-4o</span>
+            <span class="model-item-right">
+              <span class="model-item-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+            </span>
+          </div>
+
+          <div class="popup-item">
+            <span class="model-item-logo" style="background:#19c37d">O</span>
+            <span class="model-item-name">GPT-4o Mini</span>
+            <span class="model-item-right">
+              <span class="model-item-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+            </span>
+          </div>
+
+          <div class="model-group-header">Anthropic</div>
+
+          <!-- Variants: no more expand/indent — a segmented chip group sits right in the row -->
+          <div class="popup-item has-variants">
+            <span class="model-item-logo" style="background:#d97757">A</span>
+            <span class="model-item-name">Claude 4 Sonnet</span>
+            <span class="model-item-right">
+              <span class="model-variant-group">
+                <button class="model-variant-chip active">2025-05-14</button>
+                <button class="model-variant-chip">2024-09-01</button>
+              </span>
+              <span class="model-item-check" style="opacity:1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+            </span>
+          </div>
+
+          <div class="popup-item">
+            <span class="model-item-logo" style="background:#d97757">A</span>
+            <span class="model-item-name">Claude 4 Opus</span>
+            <span class="model-item-right">
+              <span class="model-item-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+            </span>
+          </div>
+
+          <div class="model-group-header">Google</div>
+
+          <div class="popup-item">
+            <span class="model-item-logo" style="background:#4285f4">G</span>
+            <span class="model-item-name">Gemini 2.0 Flash</span>
+            <span class="model-item-right">
+              <span class="model-item-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+            </span>
+          </div>
+          <div class="popup-item">
+            <span class="model-item-logo" style="background:#4285f4">G</span>
+            <span class="model-item-name">Gemini 1.5 Pro</span>
+            <span class="model-item-right">
+              <span class="model-item-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+            </span>
+          </div>
+        </div>
+
+        <div class="model-popup-footer">
+          <button class="model-popup-add">
+            <span class="model-add-icon"><svg viewBox="0 0 16 16"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg></span>
+            <span>Add Provider</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 1b. VARIANT CHIP — ISOLATED CLOSE-UP ── -->
+<div class="section">
+  <div class="section-label">1b · Variant chips — close-up (hover / active states)</div>
+  <div class="stage">
+    <div class="popup-item has-variants" style="background:var(--bg-modal); border:1px solid var(--border-color); width:320px;">
+      <span class="model-item-logo" style="background:#d97757">A</span>
+      <span class="model-item-name">Claude 4 Sonnet</span>
+      <span class="model-item-right">
+        <span class="model-variant-group">
+          <button class="model-variant-chip active">2025-05-14</button>
+          <button class="model-variant-chip">2024-09-01</button>
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ── 2. ADD PROVIDER MODAL — LIST ── -->
+<div class="section">
+  <div class="section-label">2 · Add Provider Modal — list view (grouped grid, Custom broken out)</div>
+  <div class="surface">
+    <div class="provider-modal">
+      <div class="provider-modal-header">
+        <span class="provider-modal-title">Add Provider</span>
+        <button class="provider-modal-close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="provider-popup-search">
+        <span class="provider-search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+        <input class="provider-search-input" placeholder="Search providers..." value="" />
+      </div>
+      <div class="provider-list-scroll">
+        <div class="provider-list-group-label">Connected</div>
+        <div class="provider-grid">
+          <button class="provider-card connected">
+            <span class="provider-avatar" style="background:#19c37d">O</span>
+            <span class="provider-card-body">
+              <span class="provider-card-name">OpenAI</span>
+              <span class="provider-card-status">Connected</span>
+            </span>
+          </button>
+          <button class="provider-card connected">
+            <span class="provider-avatar" style="background:#d97757">A</span>
+            <span class="provider-card-body">
+              <span class="provider-card-name">Anthropic</span>
+              <span class="provider-card-status">Connected</span>
+            </span>
+          </button>
+          <button class="provider-card connected">
+            <span class="provider-avatar" style="background:#4285f4">G</span>
+            <span class="provider-card-body">
+              <span class="provider-card-name">Google</span>
+              <span class="provider-card-status">Connected</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="provider-list-group-label">Available</div>
+        <div class="provider-grid">
+          <button class="provider-card">
+            <span class="provider-avatar" style="background:#ff6b35">O</span>
+            <span class="provider-card-body">
+              <span class="provider-card-name">OpenRouter</span>
+            </span>
+          </button>
+          <button class="provider-card">
+            <span class="provider-avatar" style="background:#ff6b6b">M</span>
+            <span class="provider-card-body">
+              <span class="provider-card-name">Mistral</span>
+            </span>
+          </button>
+          <button class="provider-card">
+            <span class="provider-avatar" style="background:#000">G</span>
+            <span class="provider-card-body">
+              <span class="provider-card-name">GitHub Copilot</span>
+            </span>
+          </button>
+          <button class="provider-card">
+            <span class="provider-avatar" style="background:#8e44ad">D</span>
+            <span class="provider-card-body">
+              <span class="provider-card-name">DeepSeek</span>
+            </span>
+          </button>
+        </div>
+      </div>
+      <div class="provider-modal-footer">
+        <button class="provider-custom-btn">
+          <span class="provider-custom-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+          <span class="provider-custom-text">
+            <span class="provider-custom-title">Custom Provider</span>
+            <span class="provider-custom-sub">Connect any OpenAI-compatible endpoint</span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 3. ADD PROVIDER MODAL — CONNECT (API KEY, DEFAULT) ── -->
+<div class="section">
+  <div class="section-label">3 · Add Provider — default provider connect (API key)</div>
+  <div class="surface">
+    <div class="provider-modal">
+      <div class="provider-modal-header">
+        <div class="provider-modal-title-group">
+          <span class="provider-modal-title">Add Provider</span>
+        </div>
+        <button class="provider-modal-close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="provider-detail">
+        <div class="provider-detail-header">
+          <button class="provider-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <span class="provider-detail-avatar" style="background:#19c37d">O</span>
+          <span class="provider-detail-title-group">
+            <span class="provider-detail-title">OpenAI</span>
+            <span class="provider-detail-kicker">API key connection</span>
+          </span>
+        </div>
+        <div class="provider-detail-hint">Enter your OpenAI API key to connect. You can find this in your OpenAI account under API keys.</div>
+        <div class="provider-field-group">
+          <div class="provider-detail-label">API Key</div>
+          <div class="provider-key-field">
+            <input class="provider-key-input" type="password" placeholder="sk-..." value="sk-proj-8f92a1c4b6e0" />
+            <button class="provider-key-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <button class="provider-btn-connect">
+          Connect
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 4. CUSTOM PROVIDER — STEP 1 (provider id) ── -->
+<div class="section">
+  <div class="section-label">4 · Add Provider — Custom, step 1 of 2 (endpoint)</div>
+  <div class="surface">
+    <div class="provider-modal">
+      <div class="provider-modal-header">
+        <span class="provider-modal-title">Custom Provider</span>
+        <button class="provider-modal-close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="provider-detail">
+        <div class="provider-detail-header">
+          <button class="provider-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <span class="provider-detail-title-group">
+            <span class="provider-detail-title">Connect endpoint</span>
+            <span class="provider-detail-kicker">Step 1 of 2</span>
+          </span>
+          <span class="spacer"></span>
+          <span class="provider-step-track">
+            <span class="provider-step-dot active"></span>
+            <span class="provider-step-dot"></span>
+          </span>
+        </div>
+        <div class="provider-detail-hint">Enter the base URL of your OpenAI-compatible provider.</div>
+        <div class="provider-field-group">
+          <div class="provider-detail-label">
+            Endpoint URL
+          </div>
+          <input class="provider-key-input" style="padding-right:14px;" placeholder="https://api.my-provider.com/v1" />
+        </div>
+        <div class="spacer"></div>
+        <button class="provider-btn-connect">
+          Continue
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 5. CUSTOM PROVIDER — STEP 2 (api key) ── -->
+<div class="section">
+  <div class="section-label">5 · Add Provider — Custom, step 2 of 2 (API key)</div>
+  <div class="surface">
+    <div class="provider-modal">
+      <div class="provider-modal-header">
+        <span class="provider-modal-title">Custom Provider</span>
+        <button class="provider-modal-close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="provider-detail">
+        <div class="provider-detail-header">
+          <button class="provider-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <span class="provider-detail-title-group">
+            <span class="provider-detail-title">Add credential</span>
+            <span class="provider-detail-kicker">Step 2 of 2 — my-provider.com</span>
+          </span>
+          <span class="spacer"></span>
+          <span class="provider-step-track">
+            <span class="provider-step-dot done"></span>
+            <span class="provider-step-dot active"></span>
+          </span>
+        </div>
+        <div class="provider-detail-note provider-detail-warning">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          <span class="provider-detail-note-text">This only stores a credential for <strong>my-provider</strong> — you'll still need to configure it in <code>opencode.json</code>. See the <a href="#">setup docs</a> for examples.</span>
+        </div>
+        <div class="provider-field-group">
+          <div class="provider-detail-label">API Key</div>
+          <div class="provider-key-field">
+            <input class="provider-key-input" type="password" placeholder="sk-..." />
+            <button class="provider-key-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <button class="provider-btn-connect">
+          Connect
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 6. OAUTH CONNECT (GitHub Copilot) ── -->
+<div class="section">
+  <div class="section-label">6 · Add Provider — OAuth (GitHub Copilot)</div>
+  <div class="surface">
+    <div class="provider-modal">
+      <div class="provider-modal-header">
+        <span class="provider-modal-title">Add Provider</span>
+        <button class="provider-modal-close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="provider-detail">
+        <div class="provider-detail-header">
+          <button class="provider-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <span class="provider-detail-avatar" style="background:#000">G</span>
+          <span class="provider-detail-title-group">
+            <span class="provider-detail-title">GitHub Copilot</span>
+            <span class="provider-detail-kicker">OAuth connection</span>
+          </span>
+        </div>
+        <div class="provider-detail-hint">You'll be redirected to GitHub to authorize access, then brought back here automatically.</div>
+        <div class="spacer"></div>
+        <button class="provider-btn-connect">
+          Continue with GitHub
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 7. CONNECTED PROVIDER DETAIL ── -->
+<div class="section">
+  <div class="section-label">7 · Provider — connected (disconnect / delete)</div>
+  <div class="surface">
+    <div class="provider-modal">
+      <div class="provider-modal-header">
+        <span class="provider-modal-title">Add Provider</span>
+        <button class="provider-modal-close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="provider-detail">
+        <div class="provider-detail-header">
+          <button class="provider-detail-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <span class="provider-detail-avatar" style="background:#19c37d">O</span>
+          <span class="provider-detail-title-group">
+            <span class="provider-detail-title">OpenAI</span>
+          </span>
+        </div>
+        <div class="provider-detail-connected">
+          <div class="provider-connected-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            Connected
+          </div>
+          <div class="provider-detail-hint">This provider is connected and ready to use in the model catalog.</div>
+        </div>
+        <div class="spacer"></div>
+        <div class="provider-detail-actions">
+          <button class="provider-btn-disconnect">Disconnect</button>
+          <button class="provider-btn-remove">Delete Provider</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 8. SUCCESS ── -->
+<div class="section">
+  <div class="section-label">8 · Provider — success</div>
+  <div class="surface">
+    <div class="provider-modal">
+      <div class="provider-detail">
+        <div class="provider-success">
+          <span class="provider-success-icon-wrap">
+            <svg class="provider-success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          </span>
+          <div class="provider-success-text">Connected!</div>
+          <div class="provider-success-sub">OpenAI has been added and is ready to use.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 9. VARIANT SELECTION — MULTIPLE MODELS, ISOLATED ── -->
+<div class="section">
+  <div class="section-label">9 · Variant chips — multiple models at once (no layout jump between them)</div>
+  <div class="surface">
+    <div class="popup-menu" id="modelPopupVariant">
+      <div class="model-popup-search">
+        <input class="model-search-input" placeholder="Search models..." value="" />
+      </div>
+      <div class="model-popup-list">
+        <div class="model-group-header">Anthropic</div>
+        <div class="popup-item has-variants">
+          <span class="model-item-logo" style="background:#d97757">A</span>
+          <span class="model-item-name">Claude 4 Sonnet</span>
+          <span class="model-item-right">
+            <span class="model-variant-group">
+              <button class="model-variant-chip active">2025-05-14</button>
+              <button class="model-variant-chip">2024-09-01</button>
+            </span>
+          </span>
+        </div>
+        <div class="popup-item has-variants">
+          <span class="model-item-logo" style="background:#d97757">A</span>
+          <span class="model-item-name">Claude 4 Opus</span>
+          <span class="model-item-right">
+            <span class="model-variant-group">
+              <button class="model-variant-chip">2025-05-14</button>
+              <button class="model-variant-chip active">2024-05-22</button>
+            </span>
+          </span>
+        </div>
+        <div class="model-group-header">OpenAI</div>
+        <div class="popup-item">
+          <span class="model-item-logo" style="background:#19c37d">O</span>
+          <span class="model-item-name">GPT-4o</span>
+          <span class="model-item-right">
+            <span class="model-item-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+          </span>
+        </div>
+      </div>
+      <div class="model-popup-footer">
+        <button class="model-popup-add">
+          <span class="model-add-icon"><svg viewBox="0 0 16 16"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg></span>
+          <span>Add Provider</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

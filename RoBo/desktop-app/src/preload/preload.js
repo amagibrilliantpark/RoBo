@@ -119,6 +119,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Window controls
   window: {
     setTheme: (theme) => ipcRenderer.invoke("window:set-theme", theme),
+    setTitleBarDim: (dim) => ipcRenderer.invoke("window:titlebar-dim", dim),
   },
 
   // SSE Events (real-time updates from OpenCode)

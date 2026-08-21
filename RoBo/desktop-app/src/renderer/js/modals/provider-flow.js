@@ -27,7 +27,7 @@
         const connectBtn = M.el("providerBtnConnect");
         connectBtn.disabled = false;
         connectBtn.classList.remove("loading");
-        connectBtn.innerHTML = "<span>Submit code</span>";
+        connectBtn.innerHTML = M.connectLabel("Submit code");
       } else {
         M.el("providerDetailHint").textContent =
           auth.instructions ||
@@ -35,7 +35,7 @@
         const connectBtn = M.el("providerBtnConnect");
         connectBtn.disabled = false;
         connectBtn.classList.remove("loading");
-        connectBtn.innerHTML = "<span>Continue</span>";
+        connectBtn.innerHTML = M.connectLabel("Continue");
       }
       M.PM.isConnecting = false;
       return;

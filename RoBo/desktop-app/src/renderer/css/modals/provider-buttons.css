@@ -132,3 +132,9 @@
 .provider-error.active {
     display: block;
 }
+
+.provider-btn-arrow {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}

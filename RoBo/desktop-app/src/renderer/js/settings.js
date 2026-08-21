@@ -8,8 +8,24 @@ window.Settings = {
 
     settingsBtn.addEventListener('click', () => {
       settingsPage.classList.remove('hidden');
+      fitSettingsModalToSendButton();
       document.querySelector('.settings-section-title[data-target="generalCard"]').click();
     });
+
+    // Size the settings modal so its bottom aligns with the vertical middle of
+    // the prompt send button (the modal should stop there, not fill the screen).
+    function fitSettingsModalToSendButton() {
+      const modal = document.querySelector('.settings-modal');
+      if (!modal) return;
+      const send = document.querySelector('.btn-send');
+      if (!send) {
+        modal.style.height = 'calc(100vh - 60px)';
+        return;
+      }
+      const top = 54; // matches .settings-page padding-top
+      const centerY = send.getBoundingClientRect().top + send.offsetHeight / 2;
+      modal.style.height = Math.max(320, centerY - top) + 'px';
+    }
 
     settingsClose.addEventListener('click', () => {
       settingsPage.classList.add('hidden');
@@ -34,26 +50,12 @@ window.Settings = {
       });
     });
 
-    // ── Theme Switching ──
-    const lightThemeBtn = document.getElementById('lightThemeBtn');
-    const darkThemeBtn = document.getElementById('darkThemeBtn');
-
-    function setTheme(theme) {
-      document.body.setAttribute('data-theme', theme);
-      localStorage.setItem('robo_theme', theme);
-      
-      lightThemeBtn.classList.toggle('active', theme === 'light');
-      darkThemeBtn.classList.toggle('active', theme === 'dark');
-      if (window.electronAPI?.window?.setTheme) {
-        window.electronAPI.window.setTheme(theme);
-      }
+    // ── Theme: dark mode is hidden from users for now; always light ──
+    document.body.setAttribute('data-theme', 'light');
+    localStorage.setItem('robo_theme', 'light');
+    if (window.electronAPI?.window?.setTheme) {
+      window.electronAPI.window.setTheme('light');
     }
-
-    const savedTheme = localStorage.getItem('robo_theme') || 'light';
-    setTheme(savedTheme);
-
-    lightThemeBtn.addEventListener('click', () => { setTheme('light'); });
-    darkThemeBtn.addEventListener('click', () => { setTheme('dark'); });
 
     // Feedback button
     document.getElementById('feedbackBtn').addEventListener('click', () => {
