@@ -3,12 +3,13 @@
 (function () {
   const OVERLAYS = [
     "settingsPage",
-    "providerModalOverlay",
     "questionModal",
     "centerSearchModal",
+    "providerAddModal",
+    "confirmModal",
   ];
 
-  let dimmed = false;
+  let dimLevel = 0;
 
   function update() {
     if (
@@ -18,13 +19,14 @@
     ) {
       return;
     }
-    const anyVisible = OVERLAYS.some((id) => {
+    const visibleCount = OVERLAYS.filter((id) => {
       const el = document.getElementById(id);
       return el && !el.classList.contains("hidden");
-    });
-    if (anyVisible !== dimmed) {
-      dimmed = anyVisible;
-      window.electronAPI.window.setTitleBarDim(anyVisible);
+    }).length;
+    // 0 = no dim, 1 = single overlay dim, 2+ = double dim (e.g. settings + providerAdd)
+    if (visibleCount !== dimLevel) {
+      dimLevel = visibleCount;
+      window.electronAPI.window.setTitleBarDim(visibleCount);
     }
   }
 

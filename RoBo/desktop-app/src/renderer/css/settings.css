@@ -18,7 +18,7 @@
   z-index: 10;
   width: min(1020px, 100%);
   max-width: 100%;
-  height: calc(100vh - 60px);
+  height: 640px;
   background: var(--bg-modal-settings);
   border: 1px solid var(--border-color);
   border-radius: 16px;
@@ -279,4 +279,296 @@ body[data-theme="dark"] .theme-btn,
 body[data-theme="dark"] .feedback-btn {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* ── Providers section (models-tab layout, RoBo-adapted) ── */
+.prov-page-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+}
+.prov-section-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.prov-section-desc {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 760px;
+  margin-bottom: 20px;
+}
+.prov-btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 22px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.prov-btn-add:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-color);
+}
+.prov-btn-add svg {
+  width: 13px;
+  height: 13px;
+}
+
+.prov-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.prov-table thead tr {
+  background: var(--bg-input);
+}
+.prov-table th {
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border-color);
+}
+.prov-table td {
+  padding: 9px 18px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+.prov-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.prov-table tbody tr:hover {
+  background: var(--accent-hover);
+}
+
+.prov-model-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.prov-model-cell .prov-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.prov-group-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 18px 0 8px;
+}
+.prov-group-label:first-of-type {
+  margin-top: 4px;
+}
+.prov-empty-note {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 8px 0 4px;
+}
+.prov-row-default {
+  background: linear-gradient(135deg, rgba(180, 210, 245, 0.15), rgba(160, 200, 235, 0.08));
+  border-left: 3px solid var(--accent-color);
+}
+.prov-row-default:hover {
+  background: linear-gradient(135deg, rgba(180, 210, 245, 0.25), rgba(160, 200, 235, 0.12));
+}
+.prov-row-default .prov-icon {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.prov-row-custom {
+  background: linear-gradient(135deg, rgba(180, 210, 245, 0.15), rgba(160, 200, 235, 0.08));
+  border-left: 3px solid var(--border-color);
+}
+.prov-row-custom:hover {
+  background: linear-gradient(135deg, rgba(180, 210, 245, 0.25), rgba(160, 200, 235, 0.12));
+}
+.prov-row-custom .prov-icon {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.prov-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+}
+.prov-icon-btn {
+  color: var(--text-secondary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s;
+}
+.prov-icon-btn:hover {
+  color: var(--text-primary);
+}
+.prov-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.prov-toggle {
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--color-success);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+  pointer-events: auto;
+  z-index: 1;
+}
+.prov-toggle[data-enabled="false"] {
+  background: var(--border-color);
+}
+.prov-toggle[data-enabled="false"]::after {
+  left: 3px;
+}
+.prov-toggle-locked {
+  background: #f59e0b !important;
+  cursor: not-allowed;
+}
+.prov-toggle-locked::after {
+  left: 19px;
+}
+.prov-toggle::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 19px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.2s;
+}
+
+/* ── Custom Confirmation Modal ── */
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+.confirm-modal.hidden {
+  display: none;
+}
+
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.confirm-container {
+  position: relative;
+  background: var(--bg-modal-settings);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px var(--shadow-color), 0 4px 12px var(--shadow-color);
+  max-width: 400px;
+  width: 90%;
+  padding: 24px;
+  z-index: 1;
+}
+
+.confirm-header {
+  margin-bottom: 16px;
+}
+
+.confirm-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.confirm-body {
+  margin-bottom: 24px;
+}
+
+.confirm-message {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.confirm-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.confirm-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.confirm-btn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-color);
+}
+
+.confirm-btn-confirm {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+.confirm-btn-confirm:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }

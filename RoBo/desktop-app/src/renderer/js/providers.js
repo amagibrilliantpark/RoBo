@@ -4,11 +4,25 @@ async function loadProviders() {
   try {
     if (!window.App.forceShowProviders) window.App.forceShowProviders = [];
     const providers = await window.electronAPI.provider.list();
-    window.App.providers = providers || [];
+    // Normalize to object shape even if server returns unexpected
+    if (!providers || typeof providers !== 'object' || Array.isArray(providers)) {
+      window.App.providers = { all: [], connected: [] };
+      populateModelSelector(window.App.providers);
+      throw new Error('Invalid provider payload');
+    }
+    if (!Array.isArray(providers.all)) providers.all = [];
+    if (!Array.isArray(providers.connected)) providers.connected = [];
+    window.App.providers = providers;
     populateModelSelector(providers);
   } catch (error) {
     console.error(`[Init] loadProviders FAILED in ${(performance.now() - t0).toFixed(0)}ms:`, error.message);
-    if(window.App.debug)console.error('Failed to load providers:', error);
+    if (window.App.debug) console.error('Failed to load providers:', error);
+    // Ensure UI shows empty state and caller can detect failure
+    if (!window.App.providers || Array.isArray(window.App.providers)) {
+      window.App.providers = { all: [], connected: [] };
+      try { populateModelSelector(window.App.providers); } catch {}
+    }
+    throw error;
   }
 }
 
@@ -20,47 +34,85 @@ async function loadAgents() {
     window.App.agents = agents || [];
   } catch (error) {
     console.error(`[Init] loadAgents FAILED in ${(performance.now() - t0).toFixed(0)}ms:`, error.message);
-    if(window.App.debug)console.error('Failed to load agents:', error);
+    if (window.App.debug) console.error('Failed to load agents:', error);
   }
 }
 
-/** Persisted set of provider ids the user has confirmed connected this session.
- *  OpenCode only marks providers "connected" after reloading its startup auth,
- *  so we track them locally to keep the checkmark / model catalog in sync. */
 function readConnectedProviderIds() {
   try {
     const raw = localStorage.getItem('robo_connected_providers');
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-/** Union of server-reported connected providers, locally confirmed ones, and
- *  providers force-revealed right after a connect. */
 function getConnectedProviderIds() {
-  const server = (window.App.providers && window.App.providers.connected) || [];
-  const manual = readConnectedProviderIds();
-  const force = window.App.forceShowProviders || [];
+  const prov = window.App.providers;
+  const server = (prov && !Array.isArray(prov) && Array.isArray(prov.connected)) ? prov.connected : [];
+  let manual = readConnectedProviderIds();
+  if (!Array.isArray(manual)) manual = [];
+  const force = Array.isArray(window.App.forceShowProviders) ? window.App.forceShowProviders : [];
   return [...new Set([...server, ...manual, ...force])];
 }
 
 function addConnectedProvider(id) {
   if (!id) return;
-  const list = readConnectedProviderIds();
-  if (!list.includes(id)) {
-    list.push(id);
-    localStorage.setItem('robo_connected_providers', JSON.stringify(list));
+  try {
+    const list = readConnectedProviderIds();
+    if (!list.includes(id)) {
+      list.push(id);
+      localStorage.setItem('robo_connected_providers', JSON.stringify(list));
+    }
+  } catch (e) {
+    console.warn('[Providers] addConnected failed', e);
   }
 }
 
 function removeConnectedProvider(id) {
-  const list = readConnectedProviderIds().filter((x) => x !== id);
-  localStorage.setItem('robo_connected_providers', JSON.stringify(list));
-  if (window.App.forceShowProviders) {
-    window.App.forceShowProviders = window.App.forceShowProviders.filter(
-      (x) => x !== id,
-    );
+  try {
+    const list = readConnectedProviderIds().filter((x) => x !== id);
+    localStorage.setItem('robo_connected_providers', JSON.stringify(list));
+  } catch (e) {
+    console.warn('[Providers] removeConnected failed', e);
+  }
+  if (Array.isArray(window.App.forceShowProviders)) {
+    window.App.forceShowProviders = window.App.forceShowProviders.filter((x) => x !== id);
+  }
+}
+
+function readHiddenProviderIds() {
+  try {
+    const raw = localStorage.getItem('robo_hidden_providers');
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+function isProviderHidden(id) {
+  if (!id) return false;
+  try {
+    return readHiddenProviderIds().includes(id);
+  } catch {
+    return false;
+  }
+}
+function setProviderHidden(id, hidden) {
+  if (!id) return;
+  try {
+    const list = readHiddenProviderIds();
+    const has = list.includes(id);
+    if (hidden && !has) {
+      list.push(id);
+      localStorage.setItem('robo_hidden_providers', JSON.stringify(list));
+    } else if (!hidden && has) {
+      const next = list.filter(function (x) { return x !== id; });
+      localStorage.setItem('robo_hidden_providers', JSON.stringify(next));
+    }
+  } catch (e) {
+    console.warn('[Providers] setHidden failed', e);
   }
 }
 
@@ -70,8 +122,6 @@ function providerDisplayName(id, fallback) {
   return id.charAt(0).toUpperCase() + id.slice(1);
 }
 
-/** Render the model-selector trigger as a small provider avatar + model name,
- *  matching the command-palette look used inside the popup. */
 function updateSelectorTrigger(providerId, name, meta) {
   const modelSelector = document.getElementById('modelSelector');
   if (!modelSelector) return;
@@ -89,14 +139,32 @@ function updateSelectorTrigger(providerId, name, meta) {
   modelSelector.appendChild(label);
 }
 
-/** Build the model selector dropdown from provider data, restoring saved selection.
- *  Models with variants expand inline (nested sub-items) instead of opening a
- *  separate popup, so the whole pick stays in one command palette. */
+function openProvidersSettings() {
+  const settingsPage = document.getElementById('settingsPage');
+  if (settingsPage) settingsPage.classList.remove('hidden');
+  const title = document.querySelector('.settings-section-title[data-target="providersCard"]');
+  if (title) title.click();
+}
+
+function cssEscape(str) {
+  try {
+    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(str);
+  } catch {}
+  return String(str).replace(/[^a-zA-Z0-9_-]/g, function (c) { return '\\' + c; });
+}
+
 function populateModelSelector(providers) {
   const modelPopup = document.getElementById('modelPopup');
+  if (!modelPopup) return;
+
+  // L3: avoid duplicate click guard
+  if (!modelPopup._hasClickGuard) {
+    modelPopup.addEventListener('click', function (e) { e.stopPropagation(); });
+    modelPopup._hasClickGuard = true;
+  }
+
   modelPopup.innerHTML = '';
 
-  // Command-style search input (fixed at top)
   const searchWrap = document.createElement('div');
   searchWrap.className = 'model-popup-search';
   const search = document.createElement('input');
@@ -109,12 +177,10 @@ function populateModelSelector(providers) {
   searchWrap.appendChild(search);
   modelPopup.appendChild(searchWrap);
 
-  // Scrollable list container for model items
   const list = document.createElement('div');
   list.className = 'model-popup-list';
   modelPopup.appendChild(list);
 
-  // Footer: add provider (command-item styled)
   const footer = document.createElement('div');
   footer.className = 'model-popup-footer';
   const addItem = document.createElement('button');
@@ -123,31 +189,55 @@ function populateModelSelector(providers) {
   addItem.innerHTML =
     '<span class="model-add-icon"><svg viewBox="0 0 16 16"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg></span>' +
     '<span>Add Provider</span>';
-  addItem.addEventListener('click', (e) => {
+  addItem.addEventListener('click', function (e) {
     e.stopPropagation();
     modelPopup.classList.remove('active');
-    if (window.ProviderModal) {
-      window.ProviderModal.open();
-    }
+    openProvidersSettings();
   });
   footer.appendChild(addItem);
   modelPopup.appendChild(footer);
 
-  if (!providers) return;
+  if (!providers || typeof providers !== 'object' || Array.isArray(providers)) return;
 
-  const allProviders = providers.all || [];
-  // Providers the user just added are force-revealed even before OpenCode's
-  // server marks them "connected" (credentials load at startup, so a freshly
-  // stored key may not appear in `connected` until a restart). This keeps the
-  // newly added provider visible in the model picker immediately. When nothing
-  // is connected yet we fall back to showing every provider so the user can pick.
-  const effectiveConnected = getConnectedProviderIds();
-  const providerList = effectiveConnected.length > 0
-    ? allProviders.filter((p) => effectiveConnected.includes(p.id))
-    : allProviders;
+  const allProviders = Array.isArray(providers.all) ? providers.all : [];
+  const connectedIds = getConnectedProviderIds();
+  const providerList = allProviders.filter(function (p) {
+    if (!p || !p.id) return false;
+    if (p.id === 'opencode') return true;
+    if (!connectedIds.includes(p.id)) return false;
+    if (window.App.isProviderHidden && window.App.isProviderHidden(p.id)) return false;
+    return true;
+  });
 
-  const savedModel = localStorage.getItem('robo_model');
-  const savedVariant = localStorage.getItem('robo_variant');
+  // L4: handle stale savedModel pointing at hidden/deleted provider
+  let savedModel = localStorage.getItem('robo_model');
+  let savedVariant = localStorage.getItem('robo_variant');
+  let savedParsed = null;
+  if (savedModel) {
+    try {
+      savedParsed = JSON.parse(savedModel);
+      const stillVisible = savedParsed && savedParsed.provider && providerList.some(function (p) { return p.id === savedParsed.provider; });
+      if (!stillVisible && savedParsed) {
+        // Provider hidden or deleted — clear stale selection so fallback to first visible
+        const isHidden = savedParsed.provider && isProviderHidden(savedParsed.provider);
+        if (isHidden || !connectedIds.includes(savedParsed.provider)) {
+          // keep the key for hidden case? For hidden we clear so fallback shows, but hidden can be re-shown later
+          // Clear only if deleted (not hidden) to avoid confusion; for hidden we keep but don't select it now
+          const isDeleted = !allProviders.some(function (p) { return p.id === savedParsed.provider; });
+          if (isDeleted) {
+            localStorage.removeItem('robo_model');
+            localStorage.removeItem('robo_variant');
+            savedModel = null;
+            savedParsed = null;
+            savedVariant = null;
+          }
+        }
+      }
+    } catch {
+      savedParsed = null;
+    }
+  }
+
   let selectedItem = null;
   let firstItem = null;
 
@@ -160,7 +250,7 @@ function populateModelSelector(providers) {
     const label = model.name || model.id;
     const item = document.createElement('div');
     item.className = 'popup-item';
-    item.dataset.value = `${provider.id}/${model.id}`;
+    item.dataset.value = provider.id + '/' + model.id;
     item.dataset.provider = provider.id;
     item.dataset.model = model.id;
 
@@ -192,7 +282,7 @@ function populateModelSelector(providers) {
     item.appendChild(name);
     item.appendChild(right);
 
-    item.addEventListener('click', (e) => {
+    item.addEventListener('click', function (e) {
       e.stopPropagation();
       const isVariants = model.variants && Object.keys(model.variants).length > 0;
       if (isVariants) {
@@ -206,7 +296,7 @@ function populateModelSelector(providers) {
   }
 
   function commitModel(item, sub, provider, model, meta, label, variantKey) {
-    list.querySelectorAll('.popup-item').forEach((i) => i.classList.remove('selected'));
+    list.querySelectorAll('.popup-item').forEach(function (i) { i.classList.remove('selected'); });
     item.classList.add('selected');
     if (sub) sub.classList.add('selected');
     window.App.currentModel = { provider: provider.id, model: model.id };
@@ -214,6 +304,10 @@ function populateModelSelector(providers) {
     if (variantKey !== null) {
       window.App.currentVariant = variantKey;
       localStorage.setItem('robo_variant', variantKey);
+    } else {
+      // clear variant if model has none
+      window.App.currentVariant = null;
+      localStorage.removeItem('robo_variant');
     }
     updateSelectorTrigger(provider.id, label, meta);
     modelPopup.classList.remove('active');
@@ -227,21 +321,19 @@ function populateModelSelector(providers) {
       window.App.currentVariant = currentVariant;
       localStorage.setItem('robo_variant', currentVariant);
     }
-    list.querySelectorAll('.popup-item').forEach((i) => i.classList.remove('selected'));
+    list.querySelectorAll('.popup-item').forEach(function (i) { i.classList.remove('selected'); });
     const wrap = document.createElement('div');
     wrap.className = 'model-variants';
-    keys.forEach((key) => {
+    keys.forEach(function (key) {
       const chip = document.createElement('div');
       chip.className = 'model-variant-chip' + (key === currentVariant ? ' selected' : '');
       chip.dataset.provider = provider.id;
       chip.dataset.model = model.id;
       chip.dataset.variant = key;
       chip.textContent = key;
-      chip.addEventListener('click', (e) => {
+      chip.addEventListener('click', function (e) {
         e.stopPropagation();
-        wrap
-          .querySelectorAll('.model-variant-chip')
-          .forEach((c) => c.classList.remove('selected'));
+        wrap.querySelectorAll('.model-variant-chip').forEach(function (c) { c.classList.remove('selected'); });
         chip.classList.add('selected');
         commitModel(item, chip, provider, model, meta, label, key);
       });
@@ -249,8 +341,6 @@ function populateModelSelector(providers) {
     });
     item.after(wrap);
     item.classList.add('expanded', 'selected');
-    // Selecting a model with variants still commits the model immediately so a
-    // default variant is in effect even if the user closes without picking one.
     window.App.currentModel = { provider: provider.id, model: model.id };
     localStorage.setItem('robo_model', JSON.stringify({ provider: provider.id, model: model.id }));
     updateSelectorTrigger(provider.id, label, meta);
@@ -259,109 +349,90 @@ function populateModelSelector(providers) {
   function collapseVariants(item) {
     item.classList.remove('expanded');
     const wrap = item.nextElementSibling;
-    if (wrap && wrap.classList.contains('model-variants')) {
-      wrap.remove();
-    }
+    if (wrap && wrap.classList.contains('model-variants')) wrap.remove();
   }
 
   function toggleVariants(item, provider, model, meta, label) {
-    list.querySelectorAll('.popup-item.expanded').forEach((other) => {
+    list.querySelectorAll('.popup-item.expanded').forEach(function (other) {
       if (other !== item) collapseVariants(other);
     });
-    if (item.classList.contains('expanded')) {
-      collapseVariants(item);
-    } else {
-      expandVariants(item, provider, model, meta, label);
-    }
+    if (item.classList.contains('expanded')) collapseVariants(item);
+    else expandVariants(item, provider, model, meta, label);
   }
 
   for (const provider of providerList) {
     const models = provider.models ? Object.values(provider.models) : [];
     if (!models.length) continue;
-
     const meta = window.ProviderModal.getProviderMeta(provider.id);
-
-    // Group header: provider name above its models
     const groupHeader = document.createElement('div');
     groupHeader.className = 'model-group-header';
     groupHeader.textContent = providerDisplayName(provider.id, provider);
     list.appendChild(groupHeader);
-
     for (const model of models) {
       const item = buildItem(provider, model, meta);
       list.appendChild(item);
       const label = model.name || model.id;
-
-      if (!firstItem) {
-        firstItem = { el: item, provider: provider.id, model: model.id, name: label, modelData: model };
-      }
-
-      if (savedModel) {
-        try {
-          const saved = JSON.parse(savedModel);
-          if (saved.provider === provider.id && saved.model === model.id) {
-            selectedItem = { el: item, provider: provider.id, model: model.id, name: label, modelData: model };
-          }
-        } catch {}
+      if (!firstItem) firstItem = { el: item, provider: provider.id, model: model.id, name: label, modelData: model };
+      if (savedParsed && savedParsed.provider === provider.id && savedParsed.model === model.id) {
+        selectedItem = { el: item, provider: provider.id, model: model.id, name: label, modelData: model };
       }
     }
   }
 
-  // Empty-state element for search misses (toggled by the search handler)
   const emptyEl = document.createElement('div');
   emptyEl.className = 'model-popup-empty';
   emptyEl.textContent = 'No models found.';
   emptyEl.style.display = 'none';
   list.appendChild(emptyEl);
 
-  // Select saved or first model
   const chosen = selectedItem || firstItem;
   if (chosen) {
     chosen.el.classList.add('selected');
     const meta = window.ProviderModal.getProviderMeta(chosen.provider);
     updateSelectorTrigger(chosen.provider, chosen.name, meta);
     window.App.currentModel = { provider: chosen.provider, model: chosen.model };
-
-    if (savedVariant) {
+    if (savedVariant && chosen.modelData && chosen.modelData.variants && chosen.modelData.variants[savedVariant]) {
       window.App.currentVariant = savedVariant;
+    } else if (savedVariant) {
+      // variant points at hidden/deleted model — clear
+      window.App.currentVariant = null;
     }
-    // Expand the chosen model's variants inline so the active variant shows.
-    if (
-      chosen.modelData &&
-      chosen.modelData.variants &&
-      Object.keys(chosen.modelData.variants).length > 0
-    ) {
+    if (chosen.modelData && chosen.modelData.variants && Object.keys(chosen.modelData.variants).length > 0) {
       expandVariants(chosen.el, { id: chosen.provider }, chosen.modelData, meta, chosen.name);
     }
   } else {
     updateSelectorTrigger(null, 'No models', null);
+    window.App.currentModel = null;
   }
 
-  // Search filter across model + variant names; hide empty groups; show empty state
-  search.addEventListener('input', () => {
+  // Search filter
+  search.addEventListener('input', function () {
     const q = search.value.trim().toLowerCase();
-    list.querySelectorAll('.popup-item').forEach((it) => {
-      const nm = it.querySelector('.model-item-name').textContent.toLowerCase();
+    list.querySelectorAll('.popup-item').forEach(function (it) {
+      const nmEl = it.querySelector('.model-item-name');
+      const nm = nmEl ? nmEl.textContent.toLowerCase() : '';
       it.style.display = !q || nm.includes(q) ? '' : 'none';
     });
-    list.querySelectorAll('.model-variants').forEach((wrap) => {
+    list.querySelectorAll('.model-variants').forEach(function (wrap) {
       const item = wrap.previousElementSibling;
       const hidden = item && item.style.display === 'none';
       wrap.style.display = hidden ? 'none' : '';
       if (!hidden) {
-        wrap.querySelectorAll('.model-variant-chip').forEach((chip) => {
+        wrap.querySelectorAll('.model-variant-chip').forEach(function (chip) {
           chip.style.display = !q || chip.textContent.toLowerCase().includes(q) ? '' : 'none';
         });
+        // Hide wrapper if all chips hidden
+        const anyChipVisible = Array.from(wrap.querySelectorAll('.model-variant-chip')).some(function (c) { return c.style.display !== 'none'; });
+        if (!anyChipVisible) wrap.style.display = 'none';
       }
     });
     let anyVisible = false;
-    list.querySelectorAll('.model-group-header').forEach((g) => {
+    list.querySelectorAll('.model-group-header').forEach(function (g) {
       let next = g.nextElementSibling;
       let groupVisible = false;
       while (next && next !== emptyEl && !next.classList.contains('model-group-header')) {
-        if (next.classList.contains('popup-item') && next.style.display !== 'none') {
-          groupVisible = true;
-        }
+        if (next.classList.contains('popup-item') && next.style.display !== 'none') groupVisible = true;
+        if (next.classList.contains('model-variants') && next.style.display !== 'none' && next.style.display !== '') groupVisible = true;
         next = next.nextElementSibling;
       }
       g.style.display = groupVisible ? '' : 'none';
@@ -369,39 +440,25 @@ function populateModelSelector(providers) {
     });
     emptyEl.style.display = anyVisible ? 'none' : '';
   });
-
-  // Keep internal clicks from closing the popup (e.g. typing in search)
-  modelPopup.addEventListener('click', (e) => e.stopPropagation());
 }
 
-/**
- * Apply a model selection that came from the backend (e.g. a session's stored
- * model) onto the dropdown. The model must exist in the current provider list,
- * otherwise we leave the user's last manual selection alone.
- */
 function selectModelFromBackend(providerId, modelId) {
   if (!providerId || !modelId) return false;
-  const item = document.querySelector(
-    `#modelPopup .popup-item[data-provider="${CSS.escape(providerId)}"][data-model="${CSS.escape(modelId)}"]`,
-  );
+  const escId = cssEscape(providerId);
+  const escModel = cssEscape(modelId);
+  const item = document.querySelector('#modelPopup .popup-item[data-provider="' + escId + '"][data-model="' + escModel + '"]');
   if (!item) return false;
-  const modelSelector = document.getElementById("modelSelector");
-  const modelPopup = document.getElementById("modelPopup");
+  const modelSelector = document.getElementById('modelSelector');
+  const modelPopup = document.getElementById('modelPopup');
   if (!modelSelector || !modelPopup) return false;
-
-  modelPopup
-    .querySelectorAll(".popup-item")
-    .forEach((i) => i.classList.remove("selected"));
-  item.classList.add("selected");
+  modelPopup.querySelectorAll('.popup-item').forEach(function (i) { i.classList.remove('selected'); });
+  item.classList.add('selected');
   const meta = window.ProviderModal.getProviderMeta(providerId);
-  const name = item.querySelector('.model-item-name').textContent;
+  const nameEl = item.querySelector('.model-item-name');
+  const name = nameEl ? nameEl.textContent : modelId;
   updateSelectorTrigger(providerId, name, meta);
-
   window.App.currentModel = { provider: providerId, model: modelId };
-  localStorage.setItem(
-    "robo_model",
-    JSON.stringify({ provider: providerId, model: modelId }),
-  );
+  localStorage.setItem('robo_model', JSON.stringify({ provider: providerId, model: modelId }));
   return true;
 }
 
@@ -409,3 +466,6 @@ window.Providers = { loadProviders, loadAgents, selectModelFromBackend };
 window.App.getConnectedProviderIds = getConnectedProviderIds;
 window.App.addConnectedProvider = addConnectedProvider;
 window.App.removeConnectedProvider = removeConnectedProvider;
+window.App.isProviderHidden = isProviderHidden;
+window.App.setProviderHidden = setProviderHidden;
+window.App.readHiddenProviderIds = readHiddenProviderIds;

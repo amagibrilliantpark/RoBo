@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RoBo — Custom Provider Add — Mock Designs</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ── RoBo TOKENS (light) ── */
+  :root{
+    --bg-primary: #f5f7fa;
+    --bg-modal: #fbfbfd;
+    --bg-modal-settings: #eef1f6;
+    --bg-input: rgba(246,246,249,0.78);
+    --bg-app-dim: rgba(0,0,0,0.35);
+    --text-primary: #18283a;
+    --text-secondary: #4a5a6a;
+    --text-muted: #7a8a9a;
+    --border-color: rgb(180,210,240);
+    --border-soft: rgba(180,210,240,0.55);
+    --accent: #4e87bb;
+    --accent-hover: rgba(210,230,250,0.50);
+    --accent-soft: rgba(78,135,187,0.08);
+    --accent-ring: rgba(78,135,187,0.15);
+    --success: #2e8b57;
+    --success-bg: rgba(46,139,87,0.10);
+    --warning: #e67e22;
+    --warning-bg: rgba(230,124,34,0.08);
+    --danger: #c0392b;
+    --danger-bg: rgba(192,57,43,0.08);
+    --shadow: 0 24px 64px rgba(160,200,235,0.18), 0 4px 12px rgba(160,200,235,0.12);
+    --radius-lg: 16px;
+    --radius-md: 10px;
+    --radius-sm: 8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    background: #eef1f6;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    padding: 0;
+  }
+  /* ── Top gallery chrome ── */
+  .gallery-top{
+    position: sticky; top:0; z-index: 100;
+    background: rgba(238,241,246,0.92);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 18px 24px 14px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;
+  }
+  .gallery-title h1{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px; font-weight: 700; letter-spacing: 1.2px; color: #18283a;
+  }
+  .gallery-title h1 em{font-style:normal;color:var(--accent);font-weight:400}
+  .gallery-title p{
+    margin-top: 4px; font-family:'Inter',sans-serif; font-size: 12px; color: var(--text-muted); line-height: 1.5; max-width: 640px;
+  }
+  .gallery-title p code{font-family:'JetBrains Mono',monospace;background:#fff;padding:1px 6px;border-radius:4px;border:1px solid var(--border-soft);font-size:11px;color:var(--accent)}
+  .pill-nav{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{
+    padding: 7px 12px; border-radius: 999px; border:1px solid var(--border-soft);
+    background: #fff; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; color:var(--text-secondary);
+    cursor:pointer; transition: all .14s;
+  }
+  .pill.active{background: var(--accent); color:#fff; border-color:var(--accent)}
+  .pill:hover{border-color: var(--accent)}
+  .hint-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:'Inter',sans-serif;font-size:11px;font-weight:600;color:var(--text-muted);
+    background:#fff;border:1px solid var(--border-soft);padding:6px 10px;border-radius:999px;
+  }
+  .hint-badge i{width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block}
+
+  .stage-wrap{max-width: 1200px;margin:0 auto;padding: 28px 20px 80px}
+  .section-head{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+    margin: 36px 0 14px;
+  }
+  .section-head:first-child{margin-top: 8px}
+  .sec-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--text-muted)}
+  .sec-title{font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--text-primary);margin-top:4px}
+  .sec-desc{font-family:'Inter',sans-serif;font-size:12.5px;color:var(--text-secondary);line-height:1.6;margin-top:6px;max-width:700px}
+  .sec-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .tag{font-family:'Inter',sans-serif;font-size:10.5px;font-weight:600;padding:5px 9px;border-radius:999px;background:#fff;border:1px solid var(--border-soft);color:var(--text-muted)}
+  .tag.accent{color:var(--accent);border-color:rgba(78,135,187,0.25);background:var(--accent-soft)}
+  .preview-stage{
+    position:relative;
+    background: #d9e2ee;
+    border-radius: 18px;
+    border: 1px solid rgba(180,210,240,0.45);
+    min-height: 560px;
+    display:flex;align-items:center;justify-content:center;
+    padding: 36px 16px;
+    overflow:hidden;
+  }
+  .preview-stage::before{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(420px 260px at 18% 18%, rgba(175,210,248,0.45) 0%, transparent 70%),
+      radial-gradient(380px 240px at 82% 16%, rgba(190,218,250,0.35) 0%, transparent 70%),
+      radial-gradient(460px 300px at 50% 85%, rgba(200,222,252,0.35) 0%, transparent 72%);
+    pointer-events:none;
+  }
+  .preview-stage.dark{
+    background: #0d0d0e;
+  }
+  .preview-stage.dark::before{
+    background:
+      radial-gradient(420px 260px at 18% 18%, rgba(232,98,26,0.08) 0%, transparent 70%),
+      radial-gradient(380px 240px at 82% 16%, rgba(232,98,26,0.06) 0%, transparent 70%);
+  }
+  /* backdrop blur fake app behind modal */
+  .fake-app{
+    position:absolute;inset:0;display:flex;pointer-events:none;opacity:0.45;
+  }
+  .fake-sidebar{width:220px;background:rgba(255,255,255,0.70);backdrop-filter:blur(10px);border-right:1px solid var(--border-soft)}
+  .fake-main{flex:1;padding: 18px}
+  .fake-header{height:14px;background:#fff;border-radius:6px;width:180px;margin-bottom:10px;border:1px solid var(--border-soft)}
+  .fake-line{height:10px;background:#fff;border-radius:6px;margin-bottom:8px;border:1px solid var(--border-soft)}
+  .fake-app.dark .fake-sidebar{background:#1c1c1e;border-color:#333}
+  .fake-app.dark .fake-header,.fake-app.dark .fake-line{background:#2a2a2e;border-color:#333}
+
+  /* ── Common modal base (light) ── */
+  .modal{
+    position:relative; z-index:2;
+    width: 100%; max-width: 520px;
+    background: var(--bg-modal);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    display:flex;flex-direction:column;overflow:hidden;
+  }
+  .modal-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .modal-title{
+    font-family:'Inter',sans-serif;font-size:14px;font-weight:700;color:var(--text-primary);
+    display:flex;align-items:center;gap:10px;
+  }
+  .modal-kicker{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;color:var(--text-muted)}
+  .modal-close{
+    width:28px;height:28px;border-radius:8px;border:none;background:transparent;color:var(--text-secondary);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .modal-close:hover{background:var(--accent-hover);color:var(--accent)}
+  .modal-body{padding: 20px 20px 18px; display:flex;flex-direction:column;gap:16px; overflow-y:auto; max-height: 62vh}
+  .modal-footer{
+    padding: 14px 18px;
+    border-top: 1px solid var(--border-soft);
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background: rgba(246,246,249,0.35)
+  }
+  .btn-ghost{
+    padding:9px 14px;border-radius:9px;border:1px solid var(--border-color);
+    background:#fff;font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;color:var(--text-secondary);cursor:pointer;
+  }
+  .btn-ghost:hover{background:var(--accent-hover)}
+  .btn-primary{
+    padding: 9px 16px;border-radius:9px;border:none;
+    background: var(--accent); color:#fff;
+    font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600; cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-primary:hover{filter:brightness(1.07)}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed;filter:none}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field-row{display:flex;gap:12px}
+  .field-row .field{flex:1}
+  .label{
+    font-family:'Inter',sans-serif;font-size:12px;font-weight:600;color:var(--text-secondary);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .label span{font-weight:500;color:var(--text-muted);font-size:11px}
+  .label .req{color:var(--danger);font-weight:700;margin-left:4px}
+  .input{
+    width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--border-color);
+    background: var(--bg-input); font-family:'Inter',sans-serif;font-size:13px;color:var(--text-primary);outline:none;
+    transition: border-color .14s, box-shadow .14s;
+  }
+  .input::placeholder{color:var(--text-muted)}
+  .input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
+  .input.mono{font-family:'JetBrains Mono',monospace;letter-spacing:.1px}
+  .input-wrap{position:relative;display:flex;align-items:center}
+  .input-wrap .input{padding-right:38px}
+  .icon-btn{
+    position:absolute;right:6px;width:28px;height:28px;border-radius:7px;border:none;
+    background:transparent;color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .icon-btn:hover{background:var(--accent-hover);color:var(--accent)}
+  .hint{
+    font-family:'Inter',sans-serif;font-size:11.5px;color:var(--text-muted);line-height:1.5;
+  }
+  .hint a{color:var(--accent);text-decoration:none}
+  .note{
+    display:flex;gap:8px;padding:10px 12px;border-radius:10px;background:var(--accent-soft);
+    border:1px solid rgba(78,135,187,0.10);font-family:'Inter',sans-serif;font-size:12px;color:var(--text-secondary);line-height:1.5;
+  }
+  .note.warn{background:var(--warning-bg);border-color:rgba(230,124,34,0.12)}
+  .note svg{flex-shrink:0;margin-top:1px}
+  .divider{height:1px;background:var(--border-soft)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .chip{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;padding:6px 10px;border-radius:999px;background:#fff;border:1px solid var(--border-soft);color:var(--text-secondary)}
+  .inline-test{
+    display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-size:12px;color:var(--text-secondary);
+  }
+  .inline-test .dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px var(--success-bg)}
+
+  /* ── Stepper ── */
+  .steps{display:flex;align-items:center;gap:8px}
+  .step-dot{width:22px;height:22px;border-radius:50%;border:1px solid var(--border-color);background:#fff;color:var(--text-muted);display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif;font-size:11px;font-weight:700}
+  .step-dot.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .step-dot.done{background:var(--success);border-color:var(--success);color:#fff}
+  .step-line{flex:1;height:2px;background:var(--border-soft);border-radius:999px}
+  .step-line.filled{background:var(--accent)}
+  .step-labels{display:flex;justify-content:space-between;font-family:'Inter',sans-serif;font-size:11px;color:var(--text-muted);padding: 0 2px;margin-top:6px}
+  .step-labels .on{color:var(--accent);font-weight:700}
+  .ghost-box{
+    border:1px dashed var(--border-color);background:rgba(255,255,255,0.60);border-radius:10px;padding:12px;display:flex;gap:10px;align-items:flex-start;
+  }
+
+  /* ── Dark variant ── */
+  .modal.dark{
+    background:#232326;border-color:#3a3a3e;box-shadow:0 30px 80px rgba(0,0,0,.55);
+    color:#f2f2f3;
+  }
+  .modal.dark .modal-header{border-color:#3a3a3e}
+  .modal.dark .modal-footer{border-color:#3a3a3e;background:#28282b}
+  .modal.dark .modal-title{color:#f2f2f3}
+  .modal.dark .label{color:#c9c9cc}
+  .modal.dark .label span{color:#78787c}
+  .modal.dark .input{background:#1c1c1e;border-color:#3a3a3e;color:#f2f2f3}
+  .modal.dark .input::placeholder{color:#78787c}
+  .modal.dark .input:focus{border-color:#3a7afe;box-shadow:0 0 0 3px rgba(58,122,254,0.18)}
+  .modal.dark .btn-ghost{background:#2f2f33;border-color:#414146;color:#f2f2f3}
+  .modal.dark .btn-ghost:hover{background:#38383c}
+  .modal.dark .btn-primary{background:#3a7afe}
+  .modal.dark .note{background:#2a2a2e;border-color:#3a3a3e;color:#a8a8ac}
+  .modal.dark .hint{color:#78787c}
+  .modal.dark .divider{background:#3a3a3e}
+  .modal.dark .ghost-box{background:#28282b;border-color:#414146}
+  .modal.dark .chip{background:#2a2a2e;border-color:#3a3a3e;color:#a8a8ac}
+
+  /* ── Drawer variant ── */
+  .drawer-wrap{
+    position:relative;z-index:2;width:100%;max-width:860px;
+    background:#fff;border:1px solid var(--border-color);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);
+    display:flex; min-height: 520px;
+  }
+  .drawer-left{
+    width: 280px; background: var(--bg-modal-settings); border-right:1px solid var(--border-soft);
+    padding: 18px; display:flex;flex-direction:column;gap:10px;
+  }
+  .drawer-right{flex:1;display:flex;flex-direction:column}
+  .drawer-left h4{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--text-muted)}
+  .prov-row{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border-soft);background:#fff;cursor:pointer;
+  }
+  .prov-row.active{border-color:var(--accent);background:var(--accent-soft)}
+  .prov-icon{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;flex-shrink:0}
+  .prov-name{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--text-primary)}
+  .prov-sub{font-family:'Inter',sans-serif;font-size:11px;color:var(--text-muted)}
+  .inline-card{
+    margin: 14px 18px; padding:14px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-input);
+  }
+
+  /* ── Backend notes ── */
+  .backend{
+    margin-top:22px;background:#fff;border:1px solid var(--border-soft);border-radius:14px;padding:18px;
+  }
+  .backend h3{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:var(--text-primary)}
+  .backend p{font-family:'Inter',sans-serif;font-size:12px;color:var(--text-secondary);line-height:1.6;margin-top:6px}
+  .backend pre{
+    margin-top:10px;background:#0f1923;color:#cfe0f4;border-radius:10px;padding:14px;overflow:auto;
+    font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.6;border:1px solid #1a2a3a;
+  }
+  .backend code{font-family:'JetBrains Mono',monospace}
+
+  /* scroll */
+  .modal-body::-webkit-scrollbar{width:5px}
+  .modal-body::-webkit-scrollbar-thumb{background:rgba(160,200,235,0.30);border-radius:999px}
+
+  @media (max-width: 760px){
+    .drawer-wrap{flex-direction:column}
+    .drawer-left{width:100%;border-right:none;border-bottom:1px solid var(--border-soft)}
+    .modal{max-width: 96vw}
+  }
+</style>
+</head>
+<body>
+
+<div class="gallery-top">
+  <div class="gallery-title">
+    <h1>RoBo — <em>Custom Provider</em> — Provider Ekle Mockları</h1>
+    <p>
+      Bu dosya <strong>tamamen tasarımsal / fake</strong> bir preview. Gerçek backend'e bağlı değil. Amaç: <code>Settings → Providers → Add Provider</code> akışında açılacak <strong>custom (OpenAI-compatible) provider</strong> modalı için alternatif tasarımları yan yana görmek.
+      Backend beklentisi: <code>PATCH /config</code> ile provider tanımı + <code>PUT /auth/{id}</code> ile API key. (Detay en altta)
+    </p>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div class="hint-badge"><i></i> 4 tasarım · Light & Dark · sadece HTML/CSS/JS</div>
+    <div class="pill-nav">
+      <button class="pill active" data-target="v1">V1 · Single Form</button>
+      <button class="pill" data-target="v2">V2 · Wizard</button>
+      <button class="pill" data-target="v3">V3 · Dark Mini</button>
+      <button class="pill" data-target="v4">V4 · Inline Drawer</button>
+    </div>
+  </div>
+</div>
+
+<div class="stage-wrap">
+
+  <!-- ════════════════ V1 ════════════════ — GÜNCEL: ID ve Models kaldırıldı, Name tam genişlik -->
+  <div class="section-head" id="sec-v1">
+    <div>
+      <div class="sec-label">V1 · Single Form — RoBo Light Glass (ÖNERİLEN · GÜNCEL)</div>
+      <div class="sec-title">Tek sayfada ekle — en sade hali</div>
+      <p class="sec-desc">
+        Güncel hali: <b>Provider ID</b> ve <b>Models</b> kalktı. Kullanıcı sadece <b>Provider name</b> (optional, tam genişlik — diğer inputlarla aynı genişlikte) + <b>Base URL</b> + <b>API key</b> girer. ID otomatik üretilir (hostname'den slug, örn. api.groq.com → groq), modeller ise <code>/v1/models</code> üzerinden otomatik çekilir. Gerçek implementasyonla birebir aynı.
+      </p>
+    </div>
+    <div class="sec-tags"><span class="tag accent">Önerilen</span><span class="tag">Light</span><span class="tag">Sade</span><span class="tag">Inter + JetBrains Mono</span></div>
+  </div>
+  <div class="preview-stage">
+    <div class="fake-app"><div class="fake-sidebar"></div><div class="fake-main"><div class="fake-header"></div><div class="fake-line" style="width:92%"></div><div class="fake-line" style="width:78%"></div><div class="fake-line" style="width:84%"></div></div></div>
+    <div class="modal" role="dialog" aria-label="Add Custom Provider">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">
+            <span style="width:28px;height:28px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            Add Custom Provider
+          </div>
+          <div class="modal-kicker" style="margin-top:2px;margin-left:38px">OpenAI-compatible · Base URL + API key</div>
+        </div>
+        <button class="modal-close" aria-label="close"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="note">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><circle cx="12" cy="16" r="1" fill="currentColor" stroke="none"/></svg>
+          <span>Kendi endpoint'ini ekliyorsun — örn. <code>https://api.groq.com/openai/v1</code>. Provider eklenince tüm modeller otomatik çekilir, ID otomatik üretilir.</span>
+        </div>
+
+        <div class="field">
+          <label class="label">Provider name <span>optional</span></label>
+          <input class="input" placeholder="My Provider" value="Groq" id="v1-name" style="width:100%" />
+          <div class="hint">Boş bırakırsan Base URL'den otomatik türetilir (api.groq.com → Groq). Bu input Base URL / API key ile aynı genişlikte.</div>
+        </div>
+
+        <div class="field">
+          <label class="label">Base URL <span class="req">*</span> <span>https://…/v1</span></label>
+          <input class="input mono" placeholder="https://api.example.com/v1" value="https://api.groq.com/openai/v1" id="v1-url" />
+          <div class="hint">OpenAI-compatible endpoint. Sonunda <code>/v1</code> çoğu sağlayıcıda gerekir.</div>
+        </div>
+
+        <div class="field">
+          <label class="label">API key <span class="req">*</span></label>
+          <div class="input-wrap">
+            <input class="input mono" type="password" placeholder="sk-..." value="gsk-9f3a8b12c0ff-demo" id="v1-key" />
+            <button class="icon-btn" onclick="toggleEye('v1-key', this)" aria-label="toggle">
+              <svg class="eye-open" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-closed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 002.8 2.8"/><path d="M9.9 5.1A11 11 0 0112 5c7 0 11 7 11 7a17 17 0 01-3.2 4.2"/><path d="M14.8 14.8A11 11 0 0112 17c-7 0-11-7-11-7a17 17 0 015.7-6.2"/></svg>
+            </button>
+          </div>
+          <div class="hint">Key sadece local opencode auth store'da saklanır.</div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="hint" style="font-size:11px">ID otomatik: <code>groq</code> · Modeller otomatik: <code>/v1/models</code> üzerinden çekilecek</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost">Cancel</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="hint" style="font-size:11px">Press Enter to add</span>
+          <button class="btn-primary" id="v1-add">Add provider <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ V2 ════════════════ -->
+  <div class="section-head" id="sec-v2">
+    <div>
+      <div class="sec-label">V2 · Two-Step Wizard — Stepper</div>
+      <div class="sec-title">İkiye bölünmüş akış — hata yapma riski düşük</div>
+      <p class="sec-desc">
+        Tasarım V1 ile aynı alanlar ama iki adıma bölünmüş: <b>1. Endpoint</b> (ID + Base URL) ve <b>2. Credential</b> (API key + doğrulama). Stepper, “neredeyim” hissini güçlendiriyor. URL hatalarını erken yakalamak için ilk adımda <b>Test URL</b> butonu var.
+        Ne zaman tercih edilir: teknik olmayan kullanıcılar için, validation'ı adım adım göstermek istiyorsan.
+      </p>
+    </div>
+    <div class="sec-tags"><span class="tag">Wizard</span><span class="tag">Light</span><span class="tag">2 adım</span><span class="tag">Doğrulama odaklı</span></div>
+  </div>
+  <div class="preview-stage" style="padding: 28px 12px">
+    <div class="fake-app"><div class="fake-sidebar"></div><div class="fake-main"><div class="fake-header"></div><div class="fake-line" style="width:88%"></div><div class="fake-line" style="width:64%"></div></div></div>
+
+    <div class="modal" id="v2-modal">
+      <div class="modal-header">
+        <div class="modal-title"><span style="width:28px;height:28px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5"/></svg></span> Custom Provider</div>
+        <button class="modal-close"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="modal-body" id="v2-body">
+        <!-- stepper -->
+        <div>
+          <div class="steps" id="v2-steps">
+            <span class="step-dot active" data-step="1">1</span>
+            <span class="step-line" id="v2-line1"></span>
+            <span class="step-dot" data-step="2">2</span>
+          </div>
+          <div class="step-labels"><span id="v2-l1" class="on">Endpoint</span><span id="v2-l2">Credentials</span></div>
+        </div>
+
+        <!-- STEP 1 -->
+        <div id="v2-step1">
+          <div class="note">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 4v6c0 5-3.4 8.7-7 10-3.6-1.3-7-5-7-10V6z"/></svg>
+            <span><b>Adım 1/2:</b> Provider'ı tanımla. Bu bilgiler <code>PATCH /config</code> ile <code>opencode.json → provider[“my-provider”]</code> altına yazılacak.</span>
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label class="label">Provider ID <span class="req">*</span></label>
+            <input class="input mono" placeholder="my-provider" value="my-cool-ai" />
+          </div>
+          <div class="field">
+            <label class="label">Display name <span>optional</span></label>
+            <input class="input" placeholder="My Cool AI" value="My Cool AI" />
+          </div>
+          <div class="field">
+            <label class="label">Base URL <span class="req">*</span></label>
+            <input class="input mono" placeholder="https://api.my-cool-ai.com/v1" value="" id="v2-url" />
+            <div class="hint">Örn. <code>https://api.openai.com/v1</code> · sonda <code>/v1</code> gerekiyorsa ekle.</div>
+          </div>
+          <div class="ghost-box">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><circle cx="12" cy="16" r="1" fill="currentColor" stroke="none"/></svg>
+            <div style="font-family:'Inter',sans-serif;font-size:12px;color:var(--text-secondary);line-height:1.5">
+              İpucu: Kendi sunucun local ise <code>http://localhost:11434/v1</code> (Ollama) gibi yazabilirsin. RoBo loopback'e izin verir.
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2 (hidden first) -->
+        <div id="v2-step2" style="display:none">
+          <div class="note warn">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            <span><b>my-cool-ai</b> için credential ekliyorsun. Bu key sadece <code>PUT /auth/my-cool-ai</code> ile saklanır, <code>opencode.json</code>'a yazılmaz.</span>
+          </div>
+          <div class="field" style="margin-top:14px">
+            <label class="label">API key <span class="req">*</span></label>
+            <div class="input-wrap">
+              <input class="input mono" type="password" placeholder="sk-..." value="" id="v2-key" />
+              <button class="icon-btn" onclick="toggleEye('v2-key', this)"><svg class="eye-open" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-closed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 002.8 2.8"/><path d="M9.9 5.1A11 11 0 0112 5c7 0 11 7 11 7a17 17 0 01-3.2 4.2"/></svg></button>
+            </div>
+            <div class="hint">Ollama gibi local modellerde key gerekmeyebilir — boş bırakıp devam edebilirsin.</div>
+          </div>
+          <div class="field">
+            <label class="label">Models <span>optional</span></label>
+            <input class="input mono" placeholder="llama3, mistral, gpt-4o" />
+          </div>
+          <div class="inline-test" style="margin-top:6px">
+            <span class="dot" style="background:var(--text-muted);box-shadow:none"></span>
+            <span>Not tested yet</span>
+            <a href="#" style="margin-left:auto;color:var(--accent);text-decoration:none;font-weight:700" onclick="event.preventDefault();this.previousElementSibling.previousElementSibling.style.background='var(--success)';this.previousElementSibling.previousElementSibling.style.boxShadow='0 0 0 4px var(--success-bg)';this.previousElementSibling.textContent='Connected — 3 models';">Test now</a>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="v2-back" style="visibility:hidden">Back</button>
+        <button class="btn-primary" id="v2-next">Continue <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ V3 ════════════════ -->
+  <div class="section-head" id="sec-v3">
+    <div>
+      <div class="sec-label">V3 · Dark Mini — TRAE'den ilham</div>
+      <div class="sec-title">Kompakt dark modal — gece modu sevenler için</div>
+      <p class="sec-desc">
+        Senin <code>models_tab.html</code> (TRAE ilhamlı) tasarımındaki dark paletle uyumlu. Daha küçük padding, daha yoğun form. Aynı alanlar: ID, Base URL, API key. Footer'da silik <b>Cancel</b> ve vurgulu <b>Add</b>.
+        Eğer settings'i dark yaparsan veya sadece provider ekleme dark olsun istiyorsan bu en uyumlu.
+      </p>
+    </div>
+    <div class="sec-tags"><span class="tag">Dark</span><span class="tag">Compact</span><span class="tag">TRAE style</span></div>
+  </div>
+  <div class="preview-stage dark">
+    <div class="fake-app dark"><div class="fake-sidebar"></div><div class="fake-main"><div class="fake-header"></div><div class="fake-line" style="width:90%"></div><div class="fake-line" style="width:70%"></div></div></div>
+
+    <div class="modal dark" style="max-width: 440px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" style="gap:9px">
+            <span style="width:24px;height:24px;border-radius:7px;background:#3a7afe;display:flex;align-items:center;justify-content:center;color:#fff"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
+            Add provider
+          </div>
+          <div style="font-family:'Inter',sans-serif;font-size:11.5px;color:#78787c;margin-top:4px;margin-left:33px">Custom — OpenAI compatible</div>
+        </div>
+        <button class="modal-close"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+      </div>
+      <div class="modal-body" style="gap:12px;padding:18px">
+        <div class="field">
+          <label class="label">Provider ID <span class="req">*</span></label>
+          <input class="input mono" placeholder="my-provider" value="openai-compatible" style="font-size:13px" />
+        </div>
+        <div class="field">
+          <label class="label">Endpoint URL <span class="req">*</span></label>
+          <input class="input mono" placeholder="https://api.provider.com/v1" value="https://api.provider.com/v1" />
+        </div>
+        <div class="field">
+          <label class="label">API key <span class="req">*</span></label>
+          <div class="input-wrap">
+            <input class="input mono" type="password" placeholder="sk-..." value="sk-••••••••••••••••" id="v3-key" />
+            <button class="icon-btn" onclick="toggleEye('v3-key', this)"><svg class="eye-open" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-closed" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 002.8 2.8"/><path d="M9.9 5.1A11 11 0 0112 5c7 0 11 7 11 7a17 17 0 01-3.2 4.2"/></svg></button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Models <span>optional</span></label>
+          <input class="input mono" placeholder="gpt-4o, gpt-4o-mini" value="" style="font-size:13px" />
+          <div class="hint" style="margin-top:6px">Leave empty to auto-detect via <code>/v1/models</code></div>
+        </div>
+        <div class="divider"></div>
+        <div style="display:flex;align-items:center;gap:8px;font-family:'Inter',sans-serif;font-size:12px;color:#78787c">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+          Stored locally · not sent to Studio
+          <span style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn-ghost" style="padding:7px 12px;font-size:12px">Cancel</button>
+            <button class="btn-primary" style="padding:7px 14px;font-size:12px">Add</button>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ V4 ════════════════ -->
+  <div class="section-head" id="sec-v4">
+    <div>
+      <div class="sec-label">V4 · Inline Drawer — Settings içinde açılan</div>
+      <div class="sec-title">Modal yerine settings panelinin içinde büyüyen kart</div>
+      <p class="sec-desc">
+        Senin istediğin gibi: <code>Settings → Providers</code> sekmesinde <b>Add Provider</b> butonuna basınca sayfa değişmeden, sağ panelin içinde bir <b>inline form</b> açılıyor. Kullanıcı listesini kaybetmeden ekleme yapar — “modal korkusu” yok.
+        Bu, özellikle provider listesi zaten doluyken iyi: kullanıcı nereye döneceğini biliyor.
+      </p>
+    </div>
+    <div class="sec-tags"><span class="tag">Inline</span><span class="tag">No overlay</span><span class="tag">Settings-native</span></div>
+  </div>
+  <div class="preview-stage" style="padding: 22px 12px; min-height: 640px;">
+    <div class="drawer-wrap">
+      <div class="drawer-left">
+        <h4>Settings</h4>
+        <div class="prov-row"><span style="width:22px;height:22px;border-radius:6px;background:#eef1f6;border:1px solid var(--border-soft);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 001 .6"/><circle cx="12" cy="12" r="9" opacity=".25"/></svg></span><span style="font-family:'Inter',sans-serif;font-size:13px;color:var(--text-secondary)">General</span></div>
+        <div class="prov-row active"><span style="width:22px;height:22px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span><span style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:var(--text-primary)">Providers</span></div>
+        <div class="prov-row"><span style="width:22px;height:22px;border-radius:6px;background:#eef1f6;border:1px solid var(--border-soft);display:flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"/></svg></span><span style="font-family:'Inter',sans-serif;font-size:13px;color:var(--text-secondary)">About</span></div>
+
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border-soft)">
+          <div style="font-family:'Inter',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Existing</div>
+          <div class="prov-row" style="padding:8px 10px"><span class="prov-icon" style="background:#19c37d">O</span><div><div class="prov-name">OpenAI</div><div class="prov-sub">Connected · gpt-4o</div></div></div>
+          <div class="prov-row" style="padding:8px 10px;margin-top:6px"><span class="prov-icon" style="background:#d97757">A</span><div><div class="prov-name">Anthropic</div><div class="prov-sub">Connected · claude-4</div></div></div>
+          <div class="prov-row" style="padding:8px 10px;margin-top:6px;opacity:.6"><span class="prov-icon" style="background:#666">C</span><div><div class="prov-name">my-provider</div><div class="prov-sub">Not connected</div></div></div>
+        </div>
+      </div>
+
+      <div class="drawer-right">
+        <div style="padding:18px 18px 0 18px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-family:'Inter',sans-serif;font-size:18px;font-weight:700;color:var(--text-primary)">Providers</div>
+            <div style="font-family:'Inter',sans-serif;font-size:12.5px;color:var(--text-secondary);margin-top:4px">Manage your AI models</div>
+          </div>
+          <button class="btn-primary" id="v4-toggle" style="background:#18283a"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Add provider</button>
+        </div>
+
+        <!-- the inline add card (the mock) -->
+        <div id="v4-card" class="inline-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:8px">
+              <span style="width:26px;height:26px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></span>
+              Add custom provider
+              <span style="font-weight:500;color:var(--text-muted);font-size:11.5px;margin-left:4px">OpenAI-compatible</span>
+            </div>
+            <button class="modal-close" onclick="document.getElementById('v4-card').style.display='none';document.getElementById('v4-toggle').style.display='inline-flex'"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg></button>
+          </div>
+
+          <div class="note" style="margin-bottom:12px">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><circle cx="12" cy="16" r="1" fill="currentColor" stroke="none"/></svg>
+            <span>Built-in provider eklemiyorsun — kendi endpoint'ini bağlıyorsun. Örneğin <code>https://api.groq.com/openai/v1</code></span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="field-row">
+              <div class="field">
+                <label class="label">ID <span class="req">*</span></label>
+                <input class="input mono" placeholder="my-provider" value="groq-custom" />
+              </div>
+              <div class="field">
+                <label class="label">Name <span>optional</span></label>
+                <input class="input" placeholder="Groq" value="Groq" />
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">Base URL <span class="req">*</span></label>
+              <input class="input mono" placeholder="https://api.groq.com/openai/v1" value="https://api.groq.com/openai/v1" />
+            </div>
+            <div class="field">
+              <label class="label">API key <span class="req">*</span></label>
+              <div class="input-wrap">
+                <input class="input mono" type="password" value="gsk-••••••••••••••••" id="v4-key" />
+                <button class="icon-btn" onclick="toggleEye('v4-key', this)"><svg class="eye-open" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><svg class="eye-closed" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 002.8 2.8"/><path d="M9.9 5.1A11 11 0 0112 5c7 0 11 7 11 7a17 17 0 01-3.2 4.2"/></svg></button>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+              <button class="btn-ghost" onclick="document.getElementById('v4-card').style.display='none';document.getElementById('v4-toggle').style.display='inline-flex'">Cancel</button>
+              <button class="btn-primary">Add provider</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin: 0 18px; font-family:'Inter',sans-serif;font-size:11px;color:var(--text-muted);line-height:1.5">
+          Add'e basınca sırasıyla: <code>PATCH /config</code> → <code>PUT /auth/{id}</code> → <code>GET /provider</code> refresh → model selector güncelle.
+        </div>
+
+        <div style="flex:1"></div>
+        <div style="padding:12px 18px;border-top:1px solid var(--border-soft);display:flex;justify-content:flex-end;gap:8px;background:rgba(246,246,249,0.35)">
+          <span style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text-muted);align-self:center">This panel is a preview of the real Providers tab</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Backend notes ── -->
+  <div class="backend">
+    <h3>🔌 Backend beklentisi — opencode (gerçek) nasıl çalışıyor</h3>
+    <p>Bu mocklar “sadece tasarım”. Gerçek ekleme akışında RoBo desktop-app şu iki çağrıyı yapmalı. Senin istediğin <b>custom OpenAI-compatible</b> provider bununla uyumlu:</p>
+    <pre><code>// 1) Provider tanımını opencode config'e yaz (built-in değil, custom)
+//    opencode.json → provider.*
+PATCH /config
+{
+  "provider": {
+    "my-provider": {
+      "name": "My Provider",
+      "baseURL": "https://api.example.com/v1",
+      // optional: models, headers vs — opencode dokümanına göre
+      "models": {
+        "gpt-4o": { "name": "GPT-4o" },
+        "gpt-4o-mini": { "name": "GPT-4o Mini" }
+      }
+    }
+  }
+}
+
+// 2) Credential'ı auth store'a yaz (Studio'ya gitmez, sadece local opencode)
+PUT /auth/my-provider
+{ "apiKey": "sk-..." }              // bazı provider'larda { "apiKey": "...", "baseUrl": "..." } de gerekebilir
+// veya OpenCodeClient.setAuth(id, credentials) → ipc-provider.js → opencode-client.js → fetch PUT /auth/{id}
+
+// 3) Listeyi yenile
+GET /provider         // → providers.all + providers.connected güncellenir
+GET /provider/auth    // → authMethods — custom provider burada yoksa isCustomProvider=true sayılır
+</code></pre>
+    <p><b>Not:</b> Şu anki RoBo kodunda (<code>desktop-app/src/main/opencode-client.js:166</code> ve <code>ipc-provider.js:36</code>) <code>PUT /auth/{id}</code> var ama <code>PATCH /config</code> ile custom tanım yazan bir akış henüz yok — bu mocklar o akışın UI'ını tasarlamak için.</p>
+    <p style="margin-top:10px">Dosya konumu: <code>RoBo/assets/ProviderAddMock.html</code> — tarayıcıda açıp doğrudan bakabilirsin. İstersen bir sonraki adımda seçtiğin tasarımı (ör. V1) gerçek <code>settings.js</code> + <code>provider-core.js</code> modalına bağlıyorum.</p>
+  </div>
+
+  <div style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn-ghost" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑ Başa dön</button>
+    <span style="font-family:'Inter',sans-serif;font-size:11px;color:var(--text-muted);align-self:center">V1 önerilir — tek adım, az alan, hızlı. V2 wizard'ı “ilk kez ekleyen” kullanıcılar için, V4 ise modal sevmeyenler için.</span>
+  </div>
+
+</div>
+
+<script>
+  function toggleEye(inputId, btn){
+    const inp = document.getElementById(inputId);
+    if(!inp) return;
+    const isPw = inp.type === 'password';
+    inp.type = isPw ? 'text' : 'password';
+    const open = btn.querySelector('.eye-open');
+    const closed = btn.querySelector('.eye-closed');
+    if(open && closed){
+      open.style.display = isPw ? 'none' : '';
+      closed.style.display = isPw ? '' : 'none';
+    }
+  }
+  // V1 add fake feedback (sade: name optional, url+key required)
+  document.getElementById('v1-add')?.addEventListener('click', function(){
+    const url = document.getElementById('v1-url')?.value?.trim();
+    const key = document.getElementById('v1-key')?.value?.trim();
+    if(!url || !key){ this.textContent = 'Fill Base URL + API key'; setTimeout(()=>this.innerHTML='Add provider <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>', 1500); return; }
+    const prev = this.innerHTML;
+    this.innerHTML = '✓ Added (mock)';
+    this.disabled = true;
+    setTimeout(()=>{ this.innerHTML = prev; this.disabled=false; }, 1600);
+  });
+  // V2 wizard
+  let v2Step = 1;
+  const v2Next = document.getElementById('v2-next');
+  const v2Back = document.getElementById('v2-back');
+  const v2s1 = document.getElementById('v2-step1');
+  const v2s2 = document.getElementById('v2-step2');
+  function renderV2(){
+    const dot1 = document.querySelector('#v2-steps [data-step="1"]');
+    const dot2 = document.querySelector('#v2-steps [data-step="2"]');
+    const line1 = document.getElementById('v2-line1');
+    const l1 = document.getElementById('v2-l1');
+    const l2 = document.getElementById('v2-l2');
+    if(v2Step===1){
+      v2s1.style.display=''; v2s2.style.display='none';
+      dot1.className='step-dot active'; dot1.textContent='1';
+      dot2.className='step-dot'; dot2.textContent='2';
+      line1.classList.remove('filled');
+      l1.className='on'; l2.className='';
+      v2Back.style.visibility='hidden';
+      v2Next.innerHTML='Continue <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>';
+    } else {
+      v2s1.style.display='none'; v2s2.style.display='';
+      dot1.className='step-dot done'; dot1.textContent='✓';
+      dot2.className='step-dot active'; dot2.textContent='2';
+      line1.classList.add('filled');
+      l1.className=''; l2.className='on';
+      v2Back.style.visibility='visible';
+      v2Next.innerHTML='Add provider <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+    }
+  }
+  v2Next?.addEventListener('click', ()=>{
+    if(v2Step===1){
+      const url = document.getElementById('v2-url')?.value?.trim();
+      if(!url){ v2Next.textContent='Enter Base URL first'; setTimeout(renderV2, 1400); return; }
+      v2Step=2; renderV2();
+    } else {
+      const k = document.getElementById('v2-key')?.value?.trim();
+      if(!k){ v2Next.textContent='Enter API key'; setTimeout(renderV2, 1400); return; }
+      v2Next.textContent='✓ Added (mock)';
+      v2Next.disabled=true;
+      setTimeout(()=>{ v2Next.disabled=false; v2Step=1; renderV2(); document.getElementById('v2-url').value=''; document.getElementById('v2-key').value=''; }, 1500);
+    }
+  });
+  v2Back?.addEventListener('click', ()=>{ v2Step=1; renderV2(); });
+
+  // V4 toggle
+  document.getElementById('v4-toggle')?.addEventListener('click', ()=>{
+    document.getElementById('v4-card').style.display='';
+    document.getElementById('v4-toggle').style.display='none';
+  });
+
+  // pill navigation
+  document.querySelectorAll('.pill').forEach(p=>{
+    p.addEventListener('click', ()=>{
+      document.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
+      p.classList.add('active');
+      const t = p.dataset.target;
+      const map = {v1:'sec-v1',v2:'sec-v2',v3:'sec-v3',v4:'sec-v4'};
+      document.getElementById(map[t])?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  });
+</script>
+</body>
+</html>

@@ -34,12 +34,16 @@ class OpenCodeClient {
           const errorJson = JSON.parse(text);
           errorMessage = errorJson.message || errorJson.error || text;
         } catch {
-          errorMessage = text || errorMessage;
+          // Strip HTML tags and truncate to avoid leaking server stack
+          const stripped = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
+          errorMessage = stripped || errorMessage;
         }
         if (response.status === 429) {
           throw new Error(`Rate limit exceeded: ${errorMessage}`);
         } else if (response.status === 402 || response.status === 403) {
           throw new Error(`Usage/quota exceeded: ${errorMessage}`);
+        } else if (response.status === 401) {
+          throw new Error(`Authentication failed: ${errorMessage}`);
         }
         throw new Error(errorMessage);
       }
@@ -164,22 +168,22 @@ class OpenCodeClient {
     return this.request("GET", "/provider/auth");
   }
   setAuth(id, credentials) {
-    return this.request("PUT", `/auth/${id}`, credentials);
+    return this.request("PUT", `/auth/${encodeURIComponent(id)}`, credentials);
   }
   oauthAuthorize(providerId, method, inputs) {
-    return this.request("POST", `/provider/${providerId}/oauth/authorize`, {
+    return this.request("POST", `/provider/${encodeURIComponent(providerId)}/oauth/authorize`, {
       method,
       ...(inputs && { inputs }),
     });
   }
   oauthCallback(providerId, method, code) {
-    return this.request("POST", `/provider/${providerId}/oauth/callback`, {
+    return this.request("POST", `/provider/${encodeURIComponent(providerId)}/oauth/callback`, {
       method,
       ...(code && { code }),
     });
   }
   deleteAuth(id) {
-    return this.request("DELETE", `/auth/${id}`);
+    return this.request("DELETE", `/auth/${encodeURIComponent(id)}`);
   }
   listAgents() {
     return this.request("GET", "/agent");

@@ -3,7 +3,7 @@ window.App = {
   currentSession: null,
   isProcessing: false,
   sessions: [],
-  providers: [],
+  providers: { all: [], connected: [] },
   agents: [],
   currentAgent: 'build',
   currentModel: null,

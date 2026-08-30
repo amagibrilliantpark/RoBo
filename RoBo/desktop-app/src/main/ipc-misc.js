@@ -32,18 +32,19 @@ function registerMiscHandlers(instanceManager, sessionManager, project) {
 
   // Dim the native title bar overlay while a full-screen modal is open, so it
   // blends with the modal's dimmed backdrop instead of staying bright.
+  // Supports double-dim when two overlays stack (e.g. settings + providerAdd).
   ipcMain.handle("window:titlebar-dim", (event, dim) => {
     const mainWindow = require("./window").getMainWindow();
     if (!mainWindow || !mainWindow.setTitleBarOverlay) return;
     const dark = currentTheme === "dark";
+    // dim can be boolean (legacy) or number of visible overlays
+    const level = typeof dim === "number" ? dim : dim ? 1 : 0;
+    let color;
+    if (level === 0) color = dark ? "#0f1923" : "#f5f7fa";
+    else if (level === 1) color = dark ? "#0b1119" : "#aab0b6";
+    else color = dark ? "#080d13" : "#93999f"; // double dim: settings (0.30) + providerAdd (0.18) ≈ 0.43
     mainWindow.setTitleBarOverlay({
-      color: dim
-        ? dark
-          ? "#0b1119"
-          : "#aab0b6"
-        : dark
-          ? "#0f1923"
-          : "#f5f7fa",
+      color,
       symbolColor: dark ? "#ffffff" : "#18283a",
       height: 22,
     });
