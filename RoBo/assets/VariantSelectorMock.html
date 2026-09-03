@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoBo — Variant Selector — Mock Designs</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-primary:#f5f7fa;
+    --bg-modal:#fbfbfd;
+    --bg-input:rgba(246,246,249,0.78);
+    --bg-hover:rgba(210,230,250,0.50);
+    --bg-soft:rgba(78,135,187,0.08);
+    --border:rgb(180,210,240);
+    --border-soft:rgba(180,210,240,0.55);
+    --text:#18283a;
+    --text-2:#4a5a6a;
+    --text-m:#7a8a9a;
+    --accent:#4e87bb;
+    --accent-hover:rgba(210,230,250,0.50);
+    --shadow:0 8px 32px rgba(24,40,58,0.12), 0 2px 8px rgba(24,40,58,0.08);
+    --radius:12px;
+    --radius-sm:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg-primary);color:var(--text);padding:32px 20px 60px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto}
+  h1{font-size:22px;font-weight:700;letter-spacing:-0.02em}
+  .sub{margin-top:6px;color:var(--text-m);font-size:13px;line-height:1.6;max-width:800px}
+  .sub code{font-family:'JetBrains Mono',monospace;background:#fff;border:1px solid var(--border-soft);padding:1px 6px;border-radius:6px;font-size:11px}
+  .grid{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 4px 18px rgba(160,200,235,0.08);overflow:hidden;display:flex;flex-direction:column}
+  .card-head{padding:14px 16px;border-bottom:1px solid var(--border-soft);display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  .card-title{font-size:13px;font-weight:700}
+  .card-desc{font-size:11.5px;color:var(--text-m);line-height:1.5;margin-top:4px}
+  .badge{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);background:var(--bg-soft);border:1px solid var(--border-soft);padding:4px 8px;border-radius:999px;white-space:nowrap}
+  .stage{padding:18px;background:linear-gradient(180deg,#fbfbfd 0%,#f5f7fa 100%);flex:1;display:flex;align-items:flex-start;justify-content:center;min-height:260px}
+  .stage.dark{background:#0f1923}
+  /* Common popup shell */
+  .popup{width:340px;background:var(--bg-modal);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+  .popup-search{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;color:var(--text-m)}
+  .popup-search input{flex:1;border:none;outline:none;background:transparent;font-family:'Inter',sans-serif;font-size:13px;color:var(--text)}
+  .popup-list{flex:1;overflow:auto;padding:6px;max-height:240px}
+  .group{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-m);padding:10px 12px 4px}
+  .item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background .12s}
+  .item:hover{background:var(--accent-hover)}
+  .item.selected{background:var(--accent-hover);color:var(--accent)}
+  .logo{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0}
+  .name{flex:1;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .check{width:16px;height:16px;display:flex;align-items:center;justify-content:center;color:var(--accent);opacity:0}
+  .item.selected .check{opacity:1}
+  .chevron{color:var(--text-m);transition:transform .14s}
+  .item.expanded .chevron{transform:rotate(90deg)}
+  /* Variants */
+  .variants-indent{margin:2px 0 6px 28px;border-left:2px solid var(--border-soft);padding-left:8px;display:flex;flex-direction:column;gap:4px}
+  .variant-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--text-2);border:1px solid transparent}
+  .variant-row:hover{background:var(--accent-hover);color:var(--accent)}
+  .variant-row.selected{background:var(--bg-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:0}
+  .variant-row.selected .dot{opacity:1}
+  .variant-subpopup{position:absolute;left:100%;top:0;margin-left:8px;width:200px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);padding:6px;z-index:10}
+  .variant-dropdown{position:relative}
+  .variant-inline-select{margin-left:auto;display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--border-soft);border-radius:8px;background:#fff;font-size:11px;color:var(--text-2);cursor:pointer}
+  .variant-chips{display:flex;gap:6px;padding:6px 12px 8px 40px}
+  .chip{padding:4px 8px;border-radius:999px;border:1px solid var(--border-soft);background:#fff;font-size:11px;color:var(--text-2);cursor:pointer}
+  .chip.selected{background:var(--accent);border-color:var(--accent);color:#fff}
+  .bottom-sheet{width:100%;background:#fff;border-top:1px solid var(--border);border-radius:16px 16px 0 0;padding:12px;box-shadow:0 -8px 32px rgba(0,0,0,0.12)}
+  .sheet-handle{width:36px;height:4px;border-radius:999px;background:var(--border);margin:0 auto 10px}
+  .note{margin-top:10px;padding:10px 12px;background:#fff;border:1px solid var(--border-soft);border-radius:10px;font-size:11.5px;color:var(--text-m);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- FINAL — No Cons -->
+  <div style="background:#fff;border:2px solid var(--accent);border-radius:16px;padding:20px 20px 18px;box-shadow:0 12px 40px rgba(78,135,187,0.16);margin-bottom:28px">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span style="background:var(--accent);color:#fff;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;border-radius:999px">FINAL — Önerilen</span>
+      <span style="font-size:12px;color:var(--text-m)">Eksisi yok — modal'ı da yeniden tasarladım. En iyisi bu.</span>
+    </div>
+    <h2 style="margin-top:14px;font-size:18px;font-weight:800;letter-spacing:-0.02em">Drill-down + Detail Panel — Tek popup, iki seviye</h2>
+    <p style="margin-top:8px;color:var(--text-2);font-size:13px;line-height:1.6;max-width:800px">Neden eksisi yok? <b>1)</b> Ana liste hep kısa — variant'lar ana listeyi uzatmıyor, sadece seçili modelin variant'ları sağ detay panelinde. <b>2)</b> Çok variant'ta scroll var, az variant'ta boşluk israfı yok. <b>3)</b> Arama hem model hem variant'ı aynı anda filtreliyor, eşleşen variant'ın modeli otomatik expand oluyor. <b>4)</b> Klavye: ↑/↓ modelde, → variant'a gir, ← geri, Enter seç. <b>5)</b> Mobilde aynı yapı bottom-sheet'e dönüşüyor. <b>6)</b> Seçili variant model satırında küçük ikincil metin olarak da görünüyor, tekrar aramaya gerek yok.</p>
+    <div style="margin-top:16px;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:center">
+      <!-- Final mock: slightly wider modal with right detail panel -->
+      <div style="width:560px;max-width:100%;background:var(--bg-modal);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;display:flex;min-height:340px">
+        <div style="flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border-soft)">
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;color:var(--text-m)"><span>⌕</span><input placeholder="Search models or variants..." style="flex:1;border:none;outline:none;background:transparent;font-family:'Inter',sans-serif;font-size:13px"></div>
+          <div style="flex:1;overflow:auto;padding:6px">
+            <div style="font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-m);padding:6px 8px">Anthropic</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;background:var(--accent-hover);color:var(--accent);cursor:pointer"><span style="width:16px;height:16px;border-radius:4px;background:#d97757;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700">A</span><span style="flex:1;font-size:12.5px;font-weight:600">Claude 4 Sonnet</span><span style="color:var(--accent)">›</span></div>
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;opacity:0.8"><span style="width:16px;height:16px;border-radius:4px;background:#d97757;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700">A</span><span style="flex:1;font-size:12.5px">Claude 4 Opus</span></div>
+            <div style="font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-m);padding:10px 8px 4px">OpenAI</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer"><span style="width:16px;height:16px;border-radius:4px;background:#19c37d;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700">O</span><span style="flex:1;font-size:12.5px">GPT-4o</span><span style="font-size:11px;color:var(--text-m)">—</span></div>
+          </div>
+          <div style="padding:6px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-m)"><span>↵ Select</span><span>← Back</span><span>⌕ Search variants too</span></div>
+        </div>
+        <div style="width:220px;flex-shrink:0;background:#fff;display:flex;flex-direction:column">
+          <div style="padding:12px 12px 8px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:8px">
+            <span style="width:20px;height:20px;border-radius:6px;background:#d97757;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700">A</span>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Claude 4 Sonnet</div>
+              <div style="font-size:11px;color:var(--text-m)">2 variants</div>
+            </div>
+          </div>
+          <div style="flex:1;padding:8px;display:flex;flex-direction:column;gap:6px">
+            <div style="padding:10px 10px;border-radius:10px;border:1px solid var(--accent);background:var(--bg-soft);cursor:pointer">
+              <div style="display:flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:var(--accent)"></span><span style="font-size:12px;font-weight:700;color:var(--accent)">2025-05-14</span><span style="margin-left:auto;font-size:10px;background:var(--accent);color:#fff;padding:2px 6px;border-radius:999px">Latest</span></div>
+              <div style="margin-top:6px;font-size:11px;color:var(--text-2);line-height:1.4">Recommended • 200k context • Reasoning</div>
+            </div>
+            <div style="padding:10px 10px;border-radius:10px;border:1px solid var(--border-soft);background:#fff;cursor:pointer;opacity:0.95">
+              <div style="display:flex;align-items:center;gap:8px"><span style="width:7px;height:7px;border-radius:50%;background:var(--border)"></span><span style="font-size:12px;font-weight:600">2024-09-01</span></div>
+              <div style="margin-top:6px;font-size:11px;color:var(--text-m)">Legacy • 100k context</div>
+            </div>
+            <div style="margin-top:auto;padding-top:8px;border-top:1px solid var(--border-soft);font-size:11px;color:var(--text-m);line-height:1.5">Seçili variant model satırında da görünür:<br><span style="font-family:'JetBrains Mono',monospace;background:var(--bg-primary);border:1px solid var(--border-soft);padding:2px 6px;border-radius:6px;font-size:11px">Claude 4 Sonnet — 2025-05-14</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:240px;max-width:320px">
+        <div style="background:var(--bg-soft);border:1px solid var(--border-soft);border-radius:12px;padding:12px">
+          <div style="font-size:12px;font-weight:700">Neden eksisi yok?</div>
+          <ul style="margin-top:8px;padding-left:16px;font-size:12px;line-height:1.6;color:var(--text-2)">
+            <li><b>Yer israfı yok:</b> Variant'lar ana listeyi uzatmıyor, sağ panelde.</li>
+            <li><b>Ölçeklenir:</b> 2 variant da 20 variant da aynı — sağ panel scroll.</li>
+            <li><b>Keşif kolay:</b> Sağda context/price/badge, karar anında.</li>
+            <li><b>Arama tek yerde:</b> “2025” yazınca Claude 4 Sonnet otomatik seçilip sağda highlight.</li>
+            <li><b>Klavye tam:</b> →/← ile seviye değiştir, Enter seç.</li>
+            <li><b>Mobil uyumlu:</b> Dar ekranda sağ panel bottom-sheet olur.</li>
+          </ul>
+        </div>
+        <div style="margin-top:10px;padding:10px 12px;background:#fff;border:1px solid var(--border-soft);border-radius:10px;font-size:11.5px;color:var(--text-m);line-height:1.5">Modal da değişti: Eskiden 340px tek kolon, şimdi <b>560px iki kolon</b> (sol: model listesi, sağ: variant detay). Arka plan ve token'lar aynı, sadece genişlik ve iç yapı. İstersen tek kolon drill-down olarak da yapabilirim — söylemen yeterli.</div>
+      </div>
+    </div>
+  </div>
+
+  <h1>RoBo — Variant Selector — Yeni Tasarımlar</h1>
+  <p class="sub">Mevcut <code>pill</code> (segmented chip) tasarımı kaldırıldı, <code>backend</code> korunuyor. Aşağıda <b>variant</b> seçimi için 14 alternatif UI var — hepsi <code>Inter</code> + <code>RoBo</code> tokenları ile, model selector popup'ının içinde çalışacak şekilde. İlk 6 temel, son 8 yaygın AI UI kit'lerinden (assistant-ui, Vercel, Linear, shadcn, Noor) ilhamlı. Favorini seç, direkt implemente edelim.</p>
+
+  <div class="grid">
+
+    <!-- A: Indented Sub-list -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">A — Indented Sub-list</div>
+          <div class="card-desc">Modelin altına girintili alt liste. En net hiyerarşi, klavye ile çok rahat. En çok önerilen.</div>
+        </div>
+        <span class="badge">Önerilen</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div class="popup-search"><span style="color:var(--text-m)">⌕</span><input placeholder="Search models..."></div>
+          <div class="popup-list">
+            <div class="group">Anthropic</div>
+            <div class="item expanded"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Sonnet</span><span class="chevron">›</span></div>
+            <div class="variants-indent">
+              <div class="variant-row selected"><span class="dot"></span>2025-05-14 — Latest</div>
+              <div class="variant-row"><span class="dot"></span>2024-09-01</div>
+            </div>
+            <div class="item"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Opus</span><span class="check">✓</span></div>
+            <div class="group">OpenAI</div>
+            <div class="item"><span class="logo" style="background:#19c37d">O</span><span class="name">GPT-4o</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Hiyerarşi net, variant'ın modele ait olduğu bariz. Eksi: Liste uzarsa dikey yer kaplar.</div>
+    </div>
+
+    <!-- B: Hover Sub-popup -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">B — Hover Sub-popup</div>
+          <div class="card-desc">Modelin sağında ikinci seviye popup. Liste kısa kalıyor, ana popup dar.</div>
+        </div>
+        <span class="badge">Kompakt</span>
+      </div>
+      <div class="stage">
+        <div class="popup" style="position:relative;overflow:visible">
+          <div class="popup-search"><span>⌕</span><input placeholder="Search models..."></div>
+          <div class="popup-list">
+            <div class="group">Anthropic</div>
+            <div class="item selected" style="position:relative"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Sonnet</span><span class="chevron">›</span>
+              <div class="variant-subpopup">
+                <div class="variant-row selected"><span class="dot"></span>2025-05-14</div>
+                <div class="variant-row"><span class="dot"></span>2024-09-01</div>
+              </div>
+            </div>
+            <div class="item"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Opus</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Ana liste hep kısa. Eksi: Mouse hover gerekiyor, klavye biraz ekstra.</div>
+    </div>
+
+    <!-- C: Inline Dropdown -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">C — Inline Dropdown</div>
+          <div class="card-desc">Satırın sağında küçük select. Sadece variant'lı modellerde görünür.</div>
+        </div>
+        <span class="badge">Minimal</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div class="popup-search"><span>⌕</span><input placeholder="Search models..."></div>
+          <div class="popup-list">
+            <div class="group">Anthropic</div>
+            <div class="item"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Sonnet</span>
+              <span class="variant-dropdown"><span class="variant-inline-select">2025-05-14 ▾</span></span>
+            </div>
+            <div class="item"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Opus</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Satır yüksekliği artmıyor. Eksi: Küçük hedef, mobilde zor.</div>
+    </div>
+
+    <!-- D: Bottom Sheet -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">D — Bottom Sheet</div>
+          <div class="card-desc">Mobile-first: variant'lar alttan sheet olarak açılır, büyük hedef.</div>
+        </div>
+        <span class="badge">Mobile</span>
+      </div>
+      <div class="stage" style="align-items:flex-end">
+        <div class="popup" style="width:320px">
+          <div class="popup-search"><span>⌕</span><input placeholder="Search models..."></div>
+          <div class="popup-list">
+            <div class="item selected"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Sonnet</span><span class="chevron">›</span></div>
+          </div>
+          <div class="bottom-sheet">
+            <div class="sheet-handle"></div>
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px">Select variant — Claude 4 Sonnet</div>
+            <div class="variant-row selected"><span class="dot"></span>2025-05-14 — Recommended</div>
+            <div class="variant-row"><span class="dot"></span>2024-09-01</div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Dokunmatik için ideal. Eksi: Desktop'ta fazla yer kaplar.</div>
+    </div>
+
+    <!-- E: Chips Refined -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">E — Refined Chips</div>
+          <div class="card-desc">Eski pill'in zarif hali: daha ince, girintili değil, satırla aynı hizada.</div>
+        </div>
+        <span class="badge">Hafif</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div class="popup-search"><span>⌕</span><input placeholder="Search models..."></div>
+          <div class="popup-list">
+            <div class="group">Anthropic</div>
+            <div class="item expanded"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Sonnet</span><span class="chevron">›</span></div>
+            <div class="variant-chips">
+              <span class="chip selected">2025-05-14</span>
+              <span class="chip">2024-09-01</span>
+            </div>
+            <div class="item"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Opus</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: En az yer, en hızlı. Eksi: Uzun variant isimleri chip'e sığmayabilir.</div>
+    </div>
+
+    <!-- F: Radio List -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">F — Radio List (Full Row)</div>
+          <div class="card-desc">Variant'lar da model gibi tam satır, radio ile. En erişilebilir.</div>
+        </div>
+        <span class="badge">A11y</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div class="popup-search"><span>⌕</span><input placeholder="Search models..."></div>
+          <div class="popup-list">
+            <div class="group">Anthropic — Claude 4 Sonnet — Variants</div>
+            <div class="variant-row selected" style="margin:4px 8px"><span class="dot"></span>2025-05-14 <span style="margin-left:auto;color:var(--text-m);font-size:11px">Latest</span></div>
+            <div class="variant-row" style="margin:4px 8px"><span class="dot"></span>2024-09-01</div>
+            <div class="group">Other models</div>
+            <div class="item"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Opus</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Screen reader için en iyi, klavye net. Eksi: Biraz daha uzun liste.</div>
+    </div>
+
+    <!-- G: Segmented Effort (assistant-ui) -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">G — Segmented Effort</div>
+          <div class="card-desc">assistant-ui'den: Low/Medium/High gibi variant'lar tek satırda segment. Klavye + mouse çok hızlı.</div>
+        </div>
+        <span class="badge">assistant-ui</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div class="popup-search"><span>⌕</span><input placeholder="Search models..."></div>
+          <div class="popup-list">
+            <div class="group">Anthropic</div>
+            <div class="item expanded"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Sonnet</span></div>
+            <div style="display:flex;gap:4px;padding:6px 12px 10px 40px">
+              <div style="flex:1;display:flex;gap:2px;padding:3px;background:var(--bg-primary);border:1px solid var(--border-soft);border-radius:999px">
+                <div style="flex:1;text-align:center;padding:6px 8px;border-radius:999px;background:#fff;border:1px solid var(--border);font-size:11px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.08)">Low</div>
+                <div style="flex:1;text-align:center;padding:6px 8px;border-radius:999px;font-size:11px;color:var(--text-m)">Medium</div>
+                <div style="flex:1;text-align:center;padding:6px 8px;border-radius:999px;font-size:11px;color:var(--text-m)">High</div>
+              </div>
+            </div>
+            <div class="item"><span class="logo" style="background:#19c37d">O</span><span class="name">GPT-4o</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: 2-4 variant için en kompakt. Eksi: 5+ variant'ta sığmaz, kaydırma gerekir.</div>
+    </div>
+
+    <!-- H: Bento Grid (shadcn) -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">H — Bento Grid Cards</div>
+          <div class="card-desc">shadcn bento'dan: Her variant bir kart, context/price badge'li. Keşif için ideal.</div>
+        </div>
+        <span class="badge">shadcn</span>
+      </div>
+      <div class="stage">
+        <div class="popup" style="width:360px">
+          <div class="group">Claude 4 Sonnet — Choose variant</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px">
+            <div style="border:1px solid var(--accent);background:var(--bg-soft);border-radius:10px;padding:10px;cursor:pointer">
+              <div style="font-size:12px;font-weight:700">2025-05-14</div><div style="font-size:11px;color:var(--text-m)">Latest • 200k</div><span style="margin-top:6px;display:inline-block;font-size:10px;background:var(--accent);color:#fff;padding:2px 6px;border-radius:999px">Recommended</span>
+            </div>
+            <div style="border:1px solid var(--border-soft);background:#fff;border-radius:10px;padding:10px;cursor:pointer;opacity:0.9">
+              <div style="font-size:12px;font-weight:600">2024-09-01</div><div style="font-size:11px;color:var(--text-m)">Legacy • 100k</div>
+            </div>
+          </div>
+          <div class="group">Other</div>
+          <div class="item"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Opus</span></div>
+        </div>
+      </div>
+      <div class="note">Artı: Karşılaştırma çok net. Eksi: Popup biraz geniş olmalı.</div>
+    </div>
+
+    <!-- I: Secondary Text (Vercel) -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">I — Secondary Text</div>
+          <div class="card-desc">Vercel AI Elements'den: Model satırında variant ikincil metin olarak, tek tıkla seç.</div>
+        </div>
+        <span class="badge">Vercel</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div class="popup-search"><span>⌕</span><input placeholder="Search models..."></div>
+          <div class="popup-list">
+            <div class="group">Anthropic</div>
+            <div class="variant-row selected" style="flex-direction:column;align-items:flex-start;padding:10px 12px"><div style="display:flex;gap:8px;align-items:center"><span class="logo" style="background:#d97757">A</span><b style="font-size:12.5px">Claude 4 Sonnet</b><span style="margin-left:auto;color:var(--accent);font-size:11px">2025-05-14</span></div><div style="font-size:11px;color:var(--text-m);margin-left:24px">Latest • Reasoning • 200k context</div></div>
+            <div class="variant-row" style="flex-direction:column;align-items:flex-start;padding:10px 12px"><div style="display:flex;gap:8px;align-items:center"><span class="logo" style="background:#d97757">A</span><span style="font-size:12.5px">Claude 4 Sonnet</span><span style="margin-left:auto;font-size:11px;color:var(--text-m)">2024-09-01</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Model + variant tek satırda, arama tek yerde. Eksi: Variant'ı ayırt etmek için metni okumak gerek.</div>
+    </div>
+
+    <!-- J: Tabs -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">J — Tabs</div>
+          <div class="card-desc">Linear tarzı: Popup üstünde variant tab'ları, altta filtrelenmiş liste.</div>
+        </div>
+        <span class="badge">Linear</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div style="display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--border);background:var(--bg-primary)">
+            <span style="padding:6px 12px;border-radius:999px;background:var(--accent);color:#fff;font-size:11px;font-weight:600">2025-05-14</span>
+            <span style="padding:6px 12px;border-radius:999px;background:#fff;border:1px solid var(--border-soft);font-size:11px;color:var(--text-m)">2024-09-01</span>
+            <span style="padding:6px 12px;border-radius:999px;background:#fff;border:1px solid var(--border-soft);font-size:11px;color:var(--text-m)">2024-02-01</span>
+          </div>
+          <div class="popup-list">
+            <div class="group">Anthropic</div>
+            <div class="item selected"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Sonnet</span><span class="check">✓</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Variant'lar hep görünür, tek tıkla değişir. Eksi: Sadece o modelin variant'larına odaklı.</div>
+    </div>
+
+    <!-- K: Split Button -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">K — Split Button</div>
+          <div class="card-desc">Model adı + sağda variant için ayrı küçük buton. Click hedefi net.</div>
+        </div>
+        <span class="badge">Split</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div class="popup-search"><span>⌕</span><input placeholder="Search models..."></div>
+          <div class="popup-list">
+            <div class="item"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Sonnet</span><span style="margin-left:auto;display:flex;gap:4px"><span style="padding:4px 8px;border-radius:6px;background:var(--bg-soft);border:1px solid var(--accent);font-size:11px;color:var(--accent)">2025-05-14</span><span style="padding:4px 6px;border-radius:6px;border:1px solid var(--border-soft);font-size:11px">▾</span></span></div>
+            <div class="item"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Opus</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Model seçimi ile variant seçimi ayrık. Eksi: İki tıklama gerekebilir.</div>
+    </div>
+
+    <!-- L: Badge + Specs (Noor) -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">L — Badge + Specs</div>
+          <div class="card-desc">Noor UI'dan: Hız / context / fiyat badge'leriyle variant karşılaştırma.</div>
+        </div>
+        <span class="badge">Noor</span>
+      </div>
+      <div class="stage">
+        <div class="popup" style="width:360px">
+          <div class="group">Claude 4 Sonnet variants</div>
+          <div class="variant-row selected" style="justify-content:space-between"><span style="display:flex;gap:8px;align-items:center"><span class="dot"></span>2025-05-14</span><span style="display:flex;gap:6px"><span style="font-size:10px;background:#e6f4ea;color:#137333;padding:2px 6px;border-radius:999px">Fast</span><span style="font-size:10px;background:var(--bg-soft);padding:2px 6px;border-radius:999px">200k</span></span></div>
+          <div class="variant-row" style="justify-content:space-between"><span style="display:flex;gap:8px;align-items:center"><span class="dot"></span>2024-09-01</span><span style="display:flex;gap:6px"><span style="font-size:10px;background:#fce8e6;color:#a50e0e;padding:2px 6px;border-radius:999px">Slow</span><span style="font-size:10px;background:var(--bg-soft);padding:2px 6px;border-radius:999px">100k</span></span></div>
+        </div>
+      </div>
+      <div class="note">Artı: Karar vermek için gerekli metadata hazır. Eksi: Biraz kalabalık.</div>
+    </div>
+
+    <!-- M: Timeline -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">M — Timeline</div>
+          <div class="card-desc">Variant'lar zaman çizelgesi gibi dikey, en yenisi üstte vurgulu.</div>
+        </div>
+        <span class="badge">Timeline</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div class="group">Claude 4 Sonnet — History</div>
+          <div style="position:relative;margin:6px 12px;padding-left:16px;border-left:2px solid var(--border-soft);display:flex;flex-direction:column;gap:8px">
+            <div style="position:absolute;left:-5px;top:8px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:2px solid #fff;box-shadow:0 0 0 2px var(--accent)"></div>
+            <div class="variant-row selected" style="margin-left:8px">2025-05-14 — Latest</div>
+            <div style="position:absolute;left:-5px;top:52px;width:8px;height:8px;border-radius:50%;background:var(--border);border:2px solid #fff"></div>
+            <div class="variant-row" style="margin-left:8px">2024-09-01</div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Tarih hissi çok net. Eksi: Çok variant'ta uzar.</div>
+    </div>
+
+    <!-- N: Search + Variant Filter -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">N — Search + Variant Filter</div>
+          <div class="card-desc">Tek input hem model hem variant arar, variant eşleşirse modelin altında highlight.</div>
+        </div>
+        <span class="badge">Unified</span>
+      </div>
+      <div class="stage">
+        <div class="popup">
+          <div class="popup-search"><span>⌕</span><input value="2025" placeholder="Search models or variants..."></div>
+          <div class="popup-list">
+            <div class="group">Results for “2025”</div>
+            <div class="item expanded"><span class="logo" style="background:#d97757">A</span><span class="name">Claude 4 Sonnet</span></div>
+            <div class="variants-indent"><div class="variant-row selected"><span class="dot"></span><mark style="background:var(--accent-hover);padding:1px 3px;border-radius:4px">2025</mark>-05-14</div></div>
+            <div class="item" style="opacity:0.5"><span class="logo" style="background:#19c37d">O</span><span class="name">GPT-4o</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="note">Artı: Tek arama yeterli. Eksi: Implementasyon biraz daha logic ister.</div>
+    </div>
+
+  </div>
+
+  <div class="note" style="margin-top:20px;background:var(--bg-soft);border-color:var(--border-soft)">Backend korundu: <code>window.App.currentVariant</code> + <code>localStorage robo_variant</code> + <code>model.variants</code> aynen duruyor. Sadece <code>.model-variants / .model-variant-chip</code> CSS gizlendi. Seçtiğin tasarımı söylersen direkt <code>prompt.css</code> + <code>providers.js</code> içine takarım.</div>
+</div>
+</body>
+</html>

@@ -336,11 +336,20 @@ document.addEventListener('DOMContentLoaded', () => {
 /** Close all popup menus (mode, model, variant). */
 function closeAllPopups() {
   Utils.$('modePopup').classList.remove('active');
-  Utils.$('modelPopup').classList.remove('active');
+  const mp = Utils.$('modelPopup');
+  if (mp) {
+    const wasModelActive = mp.classList.contains('active');
+    mp.classList.remove('active');
+    // FINAL: hide right detail panel when model popup closes (so next open starts clean)
+    const vdp = document.getElementById('variantDetailPanel');
+    if (vdp) vdp.style.display = 'none';
+  }
   Utils.$('variantPopup').classList.remove('active');
   const modeBtn = Utils.$('modeSelector');
-  modeBtn.parentElement.classList.remove('is-open');
-  modeBtn.setAttribute('aria-expanded', 'false');
+  if (modeBtn && modeBtn.parentElement) {
+    modeBtn.parentElement.classList.remove('is-open');
+    modeBtn.setAttribute('aria-expanded', 'false');
+  }
 }
 
 /**
